@@ -25,23 +25,23 @@ Ask questions about your code, request refactoring, generate new snippets, get e
 
 ## Project Structure
 
-proCoder-project/
-├── venv/ # Virtual environment files (ignored by Git)
-├── proCoder/ # Main package source code
-│ ├── init.py # Makes 'proCoder' a Python package
-│ ├── main.py # CLI entry point, main loop, commands
-│ ├── config.py # Loads configuration (.env)
-│ ├── ai_client.py # Handles OpenRouter API interaction (streaming)
-│ ├── file_manager.py # Handles reading/writing local files
-│ ├── git_utils.py # Git operations (check repo, diff, stage, commit)
-│ ├── utils.py # Helper functions (diffing, code extraction, history)
-│ └── main.py # Allows running with python -m proCoder
-├── .env.example # Example environment file template
-├── .env # Your local environment config (API Key etc., ignored by Git)
-├── .gitignore # Specifies intentionally untracked files for Git
-├── README.md # This file
-├── setup.py # Defines package metadata and installation script
-└── requirements.txt # (Optional) Explicit list of dependencies
+*   📁 **proCoder-project/** *(Root Directory)*
+    *   📄 `.env` - Local environment variables (API Key, secrets - *Git ignored*)
+    *   📄 `.env.example` - Example environment file template
+    *   📄 `.gitignore` - Specifies intentionally untracked files for Git
+    *   📄 `README.md` - This documentation file
+    *   📄 `setup.py` - Package metadata and installation script
+    *   📄 `requirements.txt` - *(Optional)* List of dependencies
+    *   📁 `venv/` - Virtual environment directory (*Git ignored*)
+    *   📁 **proCoder/** *(Main Python package source code)*
+        *   📄 `__init__.py` - Makes 'proCoder' importable as a package
+        *   📄 `__main__.py` - Enables running via `python -m proCoder`
+        *   📄 `ai_client.py` - Handles communication with the OpenRouter API
+        *   📄 `config.py` - Loads configuration from `.env` and defaults
+        *   📄 `file_manager.py` - Manages reading and writing local files
+        *   📄 `git_utils.py` - Helper functions for Git commands
+        *   📄 `main.py` - Main CLI application logic, commands, chat loop
+        *   📄 `utils.py` - Utility functions (diffing, code extraction, etc.)
 
 
 ## Installation
