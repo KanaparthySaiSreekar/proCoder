@@ -28,7 +28,6 @@ Ask questions about your code, request refactoring, generate new snippets, get e
 *   📁 **proCoder-project/** *(Root Directory)*
     *   📄 `.env` - Local environment variables (API Key, secrets - *Git ignored*)
     *   📄 `.env.example` - Example environment file template
-    *   📄 `.gitignore` - Specifies intentionally untracked files for Git
     *   📄 `README.md` - This documentation file
     *   📄 `setup.py` - Package metadata and installation script
     *   📄 `requirements.txt` - *(Optional)* List of dependencies
@@ -42,6 +41,8 @@ Ask questions about your code, request refactoring, generate new snippets, get e
         *   📄 `git_utils.py` - Helper functions for Git commands
         *   📄 `main.py` - Main CLI application logic, commands, chat loop
         *   📄 `utils.py` - Utility functions (diffing, code extraction, etc.)
+        *   📄 `.gitignore` - Specifies intentionally untracked files for Git
+
 
 
 ## Installation
