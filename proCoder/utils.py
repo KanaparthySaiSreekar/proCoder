@@ -18,10 +18,15 @@ CODE_BLOCK_PATTERN = re.compile(
     re.DOTALL | re.IGNORECASE
 )
 
-def extract_code_changes(response_text: str, known_filenames: List[str]) -> Dict[str, str]:
+def extract_code_changes(response_text: str, known_filenames: List[str]) -> tuple[Dict[str, str], Dict[str, str]]:
     """
     Extracts code blocks intended for specific files from the AI's response.
     Prioritizes explicit filename hints within the code block fence.
+
+    Returns:
+        tuple: (changes_dict, new_files_dict)
+            - changes_dict: Changes to existing loaded files
+            - new_files_dict: Proposed new files to create
     """
     changes = {}
     potential_new_files = {}
@@ -72,17 +77,7 @@ def extract_code_changes(response_text: str, known_filenames: List[str]) -> Dict
                 console.print(f"[yellow]Warning:[/yellow] Multiple code blocks modifying '{target_filename}'. Using the last one found.")
             changes[target_filename] = code_content
 
-    # Handle potential new files (ask user if they want to create them?)
-    # For now, we just report them and don't include in 'changes' dict
-    # which only contains modifications to *existing* loaded files.
-    if potential_new_files:
-         console.print("\n[cyan]AI suggested creating the following new files:[/cyan]")
-         for fname, content in potential_new_files.items():
-              console.print(f"- {fname}")
-         console.print("[cyan]Creating new files automatically is not yet supported. You can copy the content manually.[/cyan]")
-
-
-    return changes
+    return changes, potential_new_files
 
 
 def generate_diff(filename: str, old_content: str, new_content: str, repo_root: Optional[str]) -> str:
@@ -167,6 +162,48 @@ def prompt_for_changes(
         console.print("\n[yellow]No changes were approved.[/yellow]")
 
     return approved_changes
+
+
+def prompt_for_new_files(new_files: Dict[str, str], repo_root: Optional[str]) -> Dict[str, str]:
+    """Shows proposed new files and asks the user whether to create each one."""
+    approved_new_files = {}
+    if not new_files:
+        return approved_new_files
+
+    console.print(Panel("[bold green]Proposed New Files[/bold green]", expand=False))
+
+    sorted_filenames = sorted(new_files.keys())
+
+    for filename in sorted_filenames:
+        content = new_files[filename]
+
+        console.print(f"\nNew file: [bold magenta]{filename}[/bold magenta]")
+        console.print(f"[dim]Size: {len(content)} characters, {len(content.splitlines())} lines[/dim]")
+
+        # Show preview of content
+        lang = filename.split('.')[-1] if '.' in filename else 'text'
+        syntax = Syntax(content, lang, theme="default", line_numbers=True, word_wrap=False)
+        console.print(syntax)
+        console.print("-" * 40) # Separator
+
+        while True:
+            response = console.input(f"Create new file {filename}? ([bold green]y[/bold green]es/[bold red]n[/bold red]o/[bold yellow]q[/bold yellow]uit asking) ").lower().strip()
+            if response == 'y':
+                approved_new_files[filename] = content
+                break
+            elif response == 'n':
+                console.print(f"[yellow]Skipping creation of {filename}.[/yellow]")
+                break
+            elif response == 'q':
+                console.print("[yellow]Aborting new file creation process.[/yellow]")
+                return {} # Return empty dict, no files approved from this point
+            else:
+                console.print("[red]Invalid input.[/red] Please enter y, n, or q.")
+
+    if not approved_new_files:
+        console.print("\n[yellow]No new files were approved.[/yellow]")
+
+    return approved_new_files
 
 
 def limit_history(history: list[dict], max_messages: int):
