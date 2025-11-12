@@ -29,6 +29,7 @@ from . import ai_client
 from . import file_manager
 from . import utils
 from . import git_utils
+from . import search_utils
 
 # --- Setup ---
 app = typer.Typer(help="proCoder: AI assistant for code editing in your terminal.")
@@ -152,8 +153,11 @@ def process_user_message(user_input: str):
 
     # --- Extract and Apply Code Changes ---
     # Pass absolute paths of known files
-    extracted_changes = utils.extract_code_changes(full_response, list(loaded_files.keys()))
+    extracted_changes, new_files = utils.extract_code_changes(full_response, list(loaded_files.keys()))
 
+    all_modified_paths = []
+
+    # Handle changes to existing files
     if extracted_changes:
         # Pass repo_root to use git diff if available
         approved_changes = utils.prompt_for_changes(extracted_changes, loaded_files, git_repo_root)
@@ -174,12 +178,42 @@ def process_user_message(user_input: str):
                 else:
                      console.print("[yellow]Warning: Some files failed to reload after changes.[/yellow]")
 
-
-                # --- Git Integration ---
-                if git_repo_root:
-                    handle_git_operations(updated_abs_paths)
+                all_modified_paths.extend(updated_abs_paths)
             else:
                 console.print("\n[yellow]No changes were ultimately applied to files.[/yellow]")
+
+    # Handle new file creation
+    if new_files:
+        approved_new_files = utils.prompt_for_new_files(new_files, git_repo_root)
+
+        if approved_new_files:
+            # Resolve paths relative to repo root if available
+            resolved_new_files = {}
+            for filename, content in approved_new_files.items():
+                if git_repo_root and not os.path.isabs(filename):
+                    # Make path relative to repo root
+                    resolved_path = os.path.join(git_repo_root, filename)
+                else:
+                    # Use as absolute path or relative to CWD
+                    resolved_path = os.path.abspath(filename)
+                resolved_new_files[resolved_path] = content
+
+            created_abs_paths = file_manager.apply_new_files(resolved_new_files)
+
+            if created_abs_paths:
+                console.print(f"\n[green]Successfully created {len(created_abs_paths)} new file(s).[/green]")
+                # Load new files into context
+                console.print("[blue]Loading new files into context...[/blue]")
+                for abs_path in created_abs_paths:
+                    load_file_content(abs_path)
+
+                all_modified_paths.extend(created_abs_paths)
+            else:
+                console.print("\n[yellow]No new files were created.[/yellow]")
+
+    # --- Git Integration ---
+    if git_repo_root and all_modified_paths:
+        handle_git_operations(all_modified_paths)
 
     # Limit history size
     utils.limit_history(conversation_history, config.MAX_HISTORY_MESSAGES)
@@ -307,13 +341,18 @@ def main(
 
 
     console.print("\nType your message or command. Available commands:")
-    console.print("  /load <path>... : Load or reload file(s) into context.")
-    console.print("  /drop <path>... : Remove file(s) from context.")
-    console.print("  /files          : List currently loaded files.")
-    console.print("  /clear          : Clear conversation history.")
-    console.print("  /context        : Show the current context being sent to the AI (for debugging).")
-    console.print("  /help           : Show this help message again.")
-    console.print("  /quit or /exit  : Exit the assistant.")
+    console.print("  /load <path>...            : Load or reload file(s) into context.")
+    console.print("  /drop <path>...            : Remove file(s) from context.")
+    console.print("  /files                     : List currently loaded files.")
+    console.print("  /search <pattern> [files]  : Search for pattern in files (regex supported).")
+    console.print("  /find <identifier> [files] : Find definitions of functions/classes.")
+    console.print("  /undo                      : Undo the last file change.")
+    console.print("  /redo                      : Redo the last undone change.")
+    console.print("  /history                   : Show change history.")
+    console.print("  /clear                     : Clear conversation history.")
+    console.print("  /context                   : Show the current context being sent to the AI.")
+    console.print("  /help                      : Show this help message again.")
+    console.print("  /quit or /exit             : Exit the assistant.")
 
     # --- Main Interaction Loop ---
     while True:
@@ -417,16 +456,93 @@ def main(
              console.print(json.dumps(context_data, indent=2))
              console.print("[bold yellow]--- End Context ---[/bold yellow]")
              continue
+        elif command.startswith("/search"):
+            parts = user_input.split(maxsplit=2)
+            if len(parts) < 2:
+                console.print("[yellow]Usage: /search <pattern> [file_pattern][/yellow]")
+                console.print("Example: /search 'def main' *.py")
+                continue
+
+            search_pattern = parts[1]
+            file_pattern = parts[2] if len(parts) > 2 else "*"
+
+            search_dir = git_repo_root if git_repo_root else os.getcwd()
+            console.print(f"[blue]Searching for '{search_pattern}' in {search_dir}...[/blue]")
+
+            results = search_utils.search_in_directory(
+                search_dir,
+                search_pattern,
+                file_pattern,
+                case_sensitive=True,
+                context_lines=2
+            )
+
+            search_utils.display_search_results(results, search_pattern)
+            continue
+
+        elif command.startswith("/find"):
+            parts = user_input.split(maxsplit=2)
+            if len(parts) < 2:
+                console.print("[yellow]Usage: /find <identifier> [file_pattern][/yellow]")
+                console.print("Example: /find MyClass *.py")
+                continue
+
+            identifier = parts[1]
+            file_pattern = parts[2] if len(parts) > 2 else "*.py"
+
+            search_dir = git_repo_root if git_repo_root else os.getcwd()
+            console.print(f"[blue]Finding definitions of '{identifier}' in {search_dir}...[/blue]")
+
+            results = search_utils.find_definition(search_dir, identifier, file_pattern)
+
+            if not results:
+                console.print(f"[yellow]No definitions found for:[/yellow] {identifier}")
+            else:
+                console.print(f"[green]Found {sum(len(matches) for matches in results.values())} definition(s):[/green]\n")
+                for filepath, matches in sorted(results.items()):
+                    console.print(f"[bold magenta]{filepath}[/bold magenta]")
+                    for line_num, line_text in matches:
+                        console.print(f"  [cyan]Line {line_num}:[/cyan] {line_text.strip()}")
+            continue
+
+        elif command == "/undo":
+            if file_manager.undo():
+                # Reload affected files if they're in context
+                console.print("[blue]Reloading affected files...[/blue]")
+                for abs_path in list(loaded_files.keys()):
+                    if os.path.exists(abs_path):
+                        load_file_content(abs_path)
+            continue
+
+        elif command == "/redo":
+            if file_manager.redo():
+                # Reload affected files if they're in context
+                console.print("[blue]Reloading affected files...[/blue]")
+                for abs_path in list(loaded_files.keys()):
+                    if os.path.exists(abs_path):
+                        load_file_content(abs_path)
+            continue
+
+        elif command == "/history":
+            history_info = file_manager.get_history_info()
+            console.print(history_info)
+            continue
+
         elif command == "/help":
              # Re-print help info
              console.print("\nAvailable commands:")
-             console.print("  /load <path>... : Load or reload file(s) into context.")
-             console.print("  /drop <path>... : Remove file(s) from context.")
-             console.print("  /files          : List currently loaded files.")
-             console.print("  /clear          : Clear conversation history and loaded files.")
-             console.print("  /context        : Show the current context being sent to the AI.")
-             console.print("  /help           : Show this help message again.")
-             console.print("  /quit or /exit  : Exit the assistant.")
+             console.print("  /load <path>...            : Load or reload file(s) into context.")
+             console.print("  /drop <path>...            : Remove file(s) from context.")
+             console.print("  /files                     : List currently loaded files.")
+             console.print("  /search <pattern> [files]  : Search for pattern in files (regex supported).")
+             console.print("  /find <identifier> [files] : Find definitions of functions/classes.")
+             console.print("  /undo                      : Undo the last file change.")
+             console.print("  /redo                      : Redo the last undone change.")
+             console.print("  /history                   : Show change history.")
+             console.print("  /clear                     : Clear conversation history and loaded files.")
+             console.print("  /context                   : Show the current context being sent to the AI.")
+             console.print("  /help                      : Show this help message again.")
+             console.print("  /quit or /exit             : Exit the assistant.")
              continue
         elif not user_input.strip(): # Ignore empty input
             continue

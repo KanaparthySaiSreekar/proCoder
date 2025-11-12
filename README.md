@@ -9,16 +9,29 @@ Ask questions about your code, request refactoring, generate new snippets, get e
 
 ## Features
 
+### Core Capabilities
 *   **Interactive Chat:** Conversational interface for coding assistance.
 *   **File Context Loading:** Load local code files directly into the conversation context using `/load`.
 *   **AI-Powered Code Modification:** Request changes to loaded files.
+*   **New File Creation:** AI can create new files in your project with approval.
 *   **Diff Preview:** View proposed changes as a `diff` before applying.
 *   **User Confirmation:** Changes are only applied to local files after your explicit confirmation (`y/n/d/q` prompt).
 *   **Streaming Responses:** AI responses are streamed token-by-token for a more responsive feel.
-*   **Git Integration (Optional):**
-    *   Detects if running within a Git repository.
-    *   Prompts to stage and commit changes after they are applied (configurable via `.env`).
-    *   Uses standard Git commands.
+
+### Advanced Features
+*   **Code Search & Grep:** Built-in `/search` command for finding patterns in your codebase (regex supported).
+*   **Definition Finder:** `/find` command to locate function and class definitions across files.
+*   **Undo/Redo:** Full undo/redo support for all file changes with `/undo` and `/redo`.
+*   **Change History:** Track all modifications with `/history` command.
+*   **Token Counting:** Accurate token counting using `tiktoken` with automatic context management.
+*   **Smart Context Management:** Automatic warning and truncation when approaching model token limits.
+
+### Git Integration (Optional)
+*   Detects if running within a Git repository.
+*   Prompts to stage and commit changes after they are applied (configurable via `.env`).
+*   Uses standard Git commands.
+
+### Configuration
 *   **Configurable AI Model:** Choose any compatible model available on [OpenRouter.ai](https://openrouter.ai/) via the `.env` file.
 *   **OpenRouter Integration:** Leverages the OpenRouter API for access to a wide variety of LLMs.
 *   **Basic Command History:** Uses `readline` (on Linux/macOS) for command history within the session.
@@ -37,10 +50,12 @@ Ask questions about your code, request refactoring, generate new snippets, get e
         *   📄 `__main__.py` - Enables running via `python -m proCoder`
         *   📄 `ai_client.py` - Handles communication with the OpenRouter API
         *   📄 `config.py` - Loads configuration from `.env` and defaults
-        *   📄 `file_manager.py` - Manages reading and writing local files
+        *   📄 `file_manager.py` - Manages reading, writing, and undo/redo for files
         *   📄 `git_utils.py` - Helper functions for Git commands
         *   📄 `main.py` - Main CLI application logic, commands, chat loop
         *   📄 `utils.py` - Utility functions (diffing, code extraction, etc.)
+        *   📄 `search_utils.py` - Code search and grep functionality
+        *   📄 `token_counter.py` - Token counting and context management
         *   📄 `.gitignore` - Specifies intentionally untracked files for Git
 
 
@@ -118,30 +133,49 @@ Ask questions about your code, request refactoring, generate new snippets, get e
         *   `/load <path>...`: Load or reload file(s) into context.
         *   `/drop <path>...`: Remove file(s) from context.
         *   `/files`: List currently loaded files.
+        *   `/search <pattern> [files]`: Search for pattern in files (regex supported).
+        *   `/find <identifier> [files]`: Find definitions of functions/classes.
+        *   `/undo`: Undo the last file change.
+        *   `/redo`: Redo the last undone change.
+        *   `/history`: Show change history.
         *   `/clear`: Clear conversation history and loaded files.
         *   `/context`: Show the current context being sent to the AI (for debugging).
         *   `/help`: Show available commands again.
         *   `/quit` or `/exit`: Exit the assistant.
 
-5.  **Apply Changes:**
+5.  **Search & Find:**
+    ```
+    >>> /search "def process" *.py
+    >>> /find MyClass *.py
+    ```
+
+6.  **Apply Changes:**
     *   When the AI proposes changes, review the diff presented.
     *   Type `y` to accept, `n` to reject, `d` to see the full proposed file content, or `q` to stop applying changes for this turn.
     *   If accepted and Git integration is active, you may be prompted to stage and commit.
+    *   Use `/undo` to revert changes if needed.
+
+## Recent Updates (v0.3.0)
+
+✅ **Implemented Features:**
+*   ✅ **Token Counting:** Accurate token counting with `tiktoken` and automatic context management
+*   ✅ **New File Creation:** Full support for creating new files via AI suggestions
+*   ✅ **Code Search:** Built-in `/search` and `/find` commands for codebase exploration
+*   ✅ **Undo/Redo:** Complete undo/redo functionality with change history tracking
 
 ## Future Improvements & Ideas
 
-*   **Robust Context Management:** Implement token counting (`tiktoken`) and intelligent context truncation/summarization to handle large files and long conversations effectively.
 *   **Advanced Code Extraction:** Improve the reliability of extracting code blocks, potentially by prompting the AI for a more structured output format (e.g., JSON containing file changes).
-*   **Support for New File Creation:** Allow the AI to create new files based on user requests and extracted code blocks.
 *   **Enhanced Git Integration:**
     *   Show `git status` or branch info more proactively.
     *   Option to automatically generate commit messages based on the changes.
     *   Support for diffing against specific commits or branches.
     *   Consider using `GitPython` library for more complex interactions (optional dependency).
+*   **Async API Calls:** Implement async/await for better performance with multiple operations.
+*   **Context Summarization:** Add intelligent summarization for very long conversations.
 *   **Configuration File:** Move more settings (e.g., prompts, model parameters like temperature) to a dedicated config file (e.g., `config.toml`).
 *   **Testing:** Add comprehensive unit and integration tests.
-*   **Multi-file Awareness:** Develop better strategies for the AI to understand relationships and perform changes across multiple files simultaneously.
-*   **Undo Functionality:** Implement a way to revert the last applied file change.
+*   **Multi-file Refactoring:** Develop better strategies for coordinated changes across multiple files.
 *   **Plugin System:** Allow extending functionality with custom commands or integrations.
 *   **Error Handling:** More granular error reporting and recovery for API and file operations.
 *   **Windows `pyreadline3`:** Conditionally install and import `pyreadline3` on Windows for better line editing, similar to the built-in `readline` on Unix-like systems.

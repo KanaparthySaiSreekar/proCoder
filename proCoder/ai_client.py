@@ -1,6 +1,7 @@
 import time
 from openai import OpenAI, APIError, RateLimitError, AuthenticationError, BadRequestError
 from . import config
+from . import token_counter
 from rich.console import Console
 
 console = Console()
@@ -63,12 +64,30 @@ def prepare_prompt_for_api(history: list[dict], loaded_files: dict[str, str], la
     if system_prompt_content:
          api_history.insert(0, {'role': 'system', 'content': system_prompt_content.strip()})
 
-    # TODO: Add token counting here and potentially truncate history or context if needed
-    # import tiktoken
-    # enc = tiktoken.encoding_for_model("gpt-4") # Use appropriate encoder
-    # token_count = len(enc.encode(json.dumps(api_history))) # Rough estimate
-    # if token_count > config.APPROX_TOKEN_LIMIT:
-    #     console.print(f"[yellow]Warning: Estimated prompt token count ({token_count}) may exceed limit ({config.APPROX_TOKEN_LIMIT}). Truncating history may be needed.[/yellow]")
+    # Token counting and context management
+    token_count = token_counter.count_tokens_for_messages(api_history, model_name=config.MODEL_NAME)
+    safe_limit = token_counter.get_safe_token_limit(config.MODEL_NAME)
+
+    # Display token usage
+    token_info = token_counter.format_token_info(token_count, config.MODEL_NAME)
+    console.print(f"[dim]Context size: {token_info}[/dim]")
+
+    # Warn if approaching limit
+    if token_count > safe_limit:
+        console.print(f"[bold red]Warning: Token count ({token_count:,}) exceeds safe limit ({safe_limit:,})[/bold red]")
+        console.print("[yellow]Consider using /clear to start a fresh conversation or loading fewer files.[/yellow]")
+
+        # Auto-truncate if severely over limit
+        context_window = token_counter.estimate_context_window(config.MODEL_NAME)
+        if token_count > context_window * 0.95:
+            console.print("[bold red]Context severely over limit. Auto-truncating conversation history...[/bold red]")
+            api_history, removed = token_counter.truncate_messages_to_limit(
+                api_history,
+                safe_limit,
+                config.MODEL_NAME,
+                preserve_system=True
+            )
+            console.print(f"[yellow]Removed {removed} old messages to fit within limit[/yellow]")
 
     return api_history
 
