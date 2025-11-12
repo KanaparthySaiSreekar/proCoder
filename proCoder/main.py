@@ -30,6 +30,8 @@ from . import file_manager
 from . import utils
 from . import git_utils
 from . import search_utils
+from . import model_manager
+from . import memory_system
 
 # --- Setup ---
 app = typer.Typer(help="proCoder: AI assistant for code editing in your terminal.")
@@ -40,6 +42,10 @@ conversation_history = []
 # Store absolute paths for consistency
 loaded_files: dict[str, str] = {} # {absolute_filepath: content}
 git_repo_root: Optional[str] = None # Store root path if detected
+# Model manager for dynamic model switching
+model_mgr: Optional[model_manager.ModelManager] = None
+# Memory system for persistent context
+memory: Optional[memory_system.MemorySystem] = None
 
 # --- Helper Functions ---
 
@@ -71,7 +77,7 @@ def load_file_content(filepath: str) -> bool:
         return False
 
 def add_initial_context_to_prompt():
-    """Adds system prompts, Git context, and loaded file content."""
+    """Adds system prompts, Git context, memory, and loaded file content."""
     global conversation_history
     if conversation_history: # Avoid adding multiple times
         return
@@ -85,7 +91,8 @@ def add_initial_context_to_prompt():
         "2. Provide the complete, updated code for the relevant file(s) enclosed in Markdown code blocks.\n"
         "3. **Crucially**, use a filename hint in the code block fence, like ```python filename=\"path/to/your/file.py\"\n...code...\n``` or similar.\n"
         "4. If modifying multiple files, use separate code blocks for each.\n"
-        "5. If the user's request is unclear, ask clarifying questions."
+        "5. If the user's request is unclear, ask clarifying questions.\n"
+        "6. Pay attention to the project memory and user preferences provided below."
     )
     conversation_history.append({"role": "system", "content": system_prompt})
 
@@ -97,7 +104,15 @@ def add_initial_context_to_prompt():
         # if branch_process: git_context += f"Current branch: {branch_process.stdout.strip()}\n"
         conversation_history.append({"role": "system", "content": git_context.strip()})
 
-    # 3. File Context
+    # 3. Memory Context (persistent knowledge)
+    if memory:
+        memory_summary = memory.get_context_summary()
+        if memory_summary:
+            memory_context = "# Project Memory\n\n" + memory_summary
+            conversation_history.append({"role": "system", "content": memory_context})
+            console.print("[dim]Added project memory to context.[/dim]")
+
+    # 4. File Context
     if loaded_files:
         file_prompt_content = "The user has loaded the following files into the context:\n\n"
         for abs_path, content in loaded_files.items():
@@ -123,11 +138,13 @@ def process_user_message(user_input: str):
 
     # --- Streaming AI Response ---
     full_response = ""
-    console.print(f"[bold blue]AI ({config.MODEL_NAME}):[/bold blue]", end="")
+    current_model = model_mgr.get_current_model_name() if model_mgr else config.MODEL_NAME
+    console.print(f"[bold blue]AI ({current_model}):[/bold blue]", end="")
     try:
         with Live(console=console, refresh_per_second=10, vertical_overflow="visible") as live:
             accumulated_response_markdown = ""
-            for chunk in ai_client.stream_ai_response(prompt_data, config.MODEL_NAME):
+            active_model = model_mgr.get_current_model_id() if model_mgr else config.MODEL_NAME
+            for chunk in ai_client.stream_ai_response(prompt_data, active_model):
                 full_response += chunk
                 # Update live display with Markdown rendering
                 # Note: Frequent Markdown parsing can be slow; update less often if needed
@@ -282,13 +299,25 @@ def callback(ctx: typer.Context):
     """
     proCoder: AI assistant for code editing. Manages session state.
     """
-    global git_repo_root
+    global git_repo_root, model_mgr, memory
     # Detect Git repo based on CWD *before* processing files
     git_repo_root = git_utils.get_repo_root()
     if git_repo_root:
         console.print(f"[dim]Detected Git repository root: {git_repo_root}[/dim]")
     else:
         console.print("[dim]Not inside a Git repository.[/dim]")
+
+    # Initialize model manager
+    default_model_key = "gemini-flash"
+    # Try to map config.MODEL_NAME to a model key
+    for key, model_info in model_manager.AVAILABLE_MODELS.items():
+        if config.MODEL_NAME.lower() in model_info["id"].lower():
+            default_model_key = key
+            break
+    model_mgr = model_manager.initialize_model_manager(default_model_key)
+
+    # Initialize memory system
+    memory = memory_system.initialize_memory_system(git_repo_root)
 
 
 @app.command()
@@ -344,6 +373,8 @@ def main(
     console.print("  /load <path>...            : Load or reload file(s) into context.")
     console.print("  /drop <path>...            : Remove file(s) from context.")
     console.print("  /files                     : List currently loaded files.")
+    console.print("  /model [name|list|back]    : Switch AI model or list available models.")
+    console.print("  /remember [show|fact|pref] : Manage persistent project memory.")
     console.print("  /search <pattern> [files]  : Search for pattern in files (regex supported).")
     console.print("  /find <identifier> [files] : Find definitions of functions/classes.")
     console.print("  /undo                      : Undo the last file change.")
@@ -441,6 +472,80 @@ def main(
                      relative_path = os.path.relpath(abs_path, git_repo_root) if git_repo_root else os.path.basename(abs_path)
                      console.print(f"  {i+1}. {relative_path} ({abs_path})")
             continue # Skip AI processing
+        elif command.startswith("/model"):
+            parts = user_input.split(maxsplit=1)
+            if len(parts) == 1 or parts[1] == "list":
+                # Show available models
+                model_mgr.list_models()
+            elif parts[1] == "back":
+                # Switch to previous model
+                model_mgr.previous_model()
+            elif parts[1] == "info":
+                # Show current model info
+                info = model_mgr.get_model_info()
+                console.print(f"\n[bold cyan]Current Model: {info['name']}[/bold cyan]")
+                console.print(f"  ID: {info['id']}")
+                console.print(f"  Speed: {info['speed']}")
+                console.print(f"  Cost: {info['cost']}")
+                console.print(f"  Context Window: {info['context']}")
+                console.print(f"  Best For: {info['best_for']}")
+            else:
+                # Try to switch to specified model
+                model_mgr.switch_model(parts[1])
+            continue
+        elif command.startswith("/remember"):
+            parts = user_input.split(maxsplit=2)
+            subcommand = parts[1] if len(parts) > 1 else "show"
+
+            if subcommand == "show":
+                section = parts[2] if len(parts) > 2 else None
+                memory.display_memory(section)
+            elif subcommand == "fact":
+                if len(parts) < 3:
+                    console.print("[yellow]Usage: /remember fact <key>=<value> [category][/yellow]")
+                    console.print("Example: /remember fact framework=FastAPI technology")
+                else:
+                    fact_parts = parts[2].split('=', 1)
+                    if len(fact_parts) == 2:
+                        key, value = fact_parts
+                        category = parts[3] if len(parts) > 3 else "general"
+                        memory.add_fact(key.strip(), value.strip(), category)
+                    else:
+                        console.print("[yellow]Invalid format. Use key=value[/yellow]")
+            elif subcommand == "pref":
+                if len(parts) < 3:
+                    console.print("[yellow]Usage: /remember pref <key>=<value>[/yellow]")
+                    console.print("Example: /remember pref indent=4")
+                else:
+                    pref_parts = parts[2].split('=', 1)
+                    if len(pref_parts) == 2:
+                        key, value = pref_parts
+                        memory.set_preference(key.strip(), value.strip())
+                    else:
+                        console.print("[yellow]Invalid format. Use key=value[/yellow]")
+            elif subcommand == "pattern":
+                if len(parts) < 3:
+                    console.print("[yellow]Usage: /remember pattern <description>[/yellow]")
+                else:
+                    memory.add_pattern(parts[2])
+            elif subcommand == "arch":
+                if len(parts) < 3:
+                    console.print("[yellow]Usage: /remember arch <component> <description>[/yellow]")
+                else:
+                    component_desc = parts[2].split(' ', 1)
+                    if len(component_desc) == 2:
+                        memory.add_architecture_note(component_desc[0], component_desc[1])
+                    else:
+                        console.print("[yellow]Provide both component name and description[/yellow]")
+            elif subcommand == "clear":
+                section = parts[2] if len(parts) > 2 else None
+                if section:
+                    memory.clear_section(section)
+                else:
+                    console.print("[yellow]Specify section to clear: facts, preferences, patterns, architecture, todos, changes[/yellow]")
+            else:
+                console.print("[yellow]Unknown subcommand. Use: show, fact, pref, pattern, arch, clear[/yellow]")
+            continue
         elif command == "/clear":
              conversation_history.clear()
              loaded_files.clear() # Also clear loaded files? Or just history? Let's clear both.
@@ -534,6 +639,8 @@ def main(
              console.print("  /load <path>...            : Load or reload file(s) into context.")
              console.print("  /drop <path>...            : Remove file(s) from context.")
              console.print("  /files                     : List currently loaded files.")
+             console.print("  /model [name|list|back]    : Switch AI model or list available models.")
+             console.print("  /remember [show|fact|pref] : Manage persistent project memory.")
              console.print("  /search <pattern> [files]  : Search for pattern in files (regex supported).")
              console.print("  /find <identifier> [files] : Find definitions of functions/classes.")
              console.print("  /undo                      : Undo the last file change.")
