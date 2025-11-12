@@ -1,11 +1,49 @@
 # proCoder AI Assistant
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Optional license badge -->
-<!-- Add other badges if desired (e.g., build status, code quality) -->
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](https://github.com/KanaparthySaiSreekar/proCoder)
 
-**proCoder** is an interactive AI coding assistant that runs directly in your terminal. Powered by models accessible via [OpenRouter.ai](https://openrouter.ai/), it helps you understand, modify, and generate code by integrating with your local file system and Git workflow.
+**proCoder** is a production-ready AI coding assistant that runs directly in your terminal. Powered by models accessible via [OpenRouter.ai](https://openrouter.ai/), it provides advanced features like file editing, code search, undo/redo, and intelligent context management.
 
-Ask questions about your code, request refactoring, generate new snippets, get explanations, and apply suggested changes directly to your files after reviewing a diff – all within your terminal environment.
+**What makes proCoder special?**
+- 🎯 **Professional-grade file operations** - Create, modify, and track all changes with full undo/redo
+- 🔍 **Built-in code search** - Find anything in your codebase without leaving the chat
+- 🧠 **Smart context management** - Never exceed token limits with automatic monitoring and warnings
+- 🔒 **Safe by default** - Review diffs before applying any changes
+- ⚡ **Fast & responsive** - Streaming responses and efficient token usage
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Examples](#examples)
+- [Recent Updates](#recent-updates-v030)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Quick Start
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/KanaparthySaiSreekar/proCoder.git
+cd proCoder
+python3 -m venv venv
+source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+
+# 2. Install
+pip install -e .
+
+# 3. Configure (add your OpenRouter API key)
+cp .env.example .env
+# Edit .env and add: OPENROUTER_API_KEY="sk-or-v1-..."
+
+# 4. Start coding!
+proCoder main path/to/your/code.py
+```
 
 ## Features
 
@@ -143,6 +181,23 @@ Ask questions about your code, request refactoring, generate new snippets, get e
         *   `/help`: Show available commands again.
         *   `/quit` or `/exit`: Exit the assistant.
 
+### Command Reference
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/load <path>...` | Load files into context | `/load src/main.py tests/test.py` |
+| `/drop <path>...` | Remove files from context | `/drop tests/test.py` |
+| `/files` | List loaded files | `/files` |
+| `/search <pattern> [glob]` | Search for regex pattern | `/search "def.*test" *.py` |
+| `/find <name> [glob]` | Find function/class definitions | `/find MyClass *.py` |
+| `/undo` | Undo last file change | `/undo` |
+| `/redo` | Redo undone change | `/redo` |
+| `/history` | Show change history | `/history` |
+| `/clear` | Clear conversation & files | `/clear` |
+| `/context` | Debug: show AI context | `/context` |
+| `/help` | Show help message | `/help` |
+| `/quit` or `/exit` | Exit proCoder | `/quit` |
+
 5.  **Search & Find:**
     ```
     >>> /search "def process" *.py
@@ -155,30 +210,255 @@ Ask questions about your code, request refactoring, generate new snippets, get e
     *   If accepted and Git integration is active, you may be prompted to stage and commit.
     *   Use `/undo` to revert changes if needed.
 
+## Examples
+
+### Example 1: Refactoring Code
+
+```bash
+proCoder main src/utils.py
+
+>>> Can you refactor the parse_data function to be more pythonic?
+```
+
+The AI will:
+1. Analyze the current code
+2. Suggest improvements
+3. Show you a diff of the changes
+4. Apply changes only after your approval
+
+### Example 2: Creating New Features
+
+```bash
+proCoder main src/app.py
+
+>>> Add a new file src/validators.py with email and phone validation functions
+```
+
+The AI will:
+1. Generate the new file content
+2. Show you the complete file for review
+3. Create the file after you approve
+4. Automatically load it into context
+
+### Example 3: Finding Code
+
+```bash
+proCoder main
+
+>>> /search "class.*Database" *.py
+>>> /find authenticate *.py
+```
+
+Quickly locate patterns or definitions without leaving the assistant.
+
+### Example 4: Safe Experimentation
+
+```bash
+>>> Rewrite this function to use async/await
+
+# Review changes, then:
+>>> /history           # See what changed
+>>> /undo              # Revert if needed
+>>> /redo              # Reapply if you change your mind
+```
+
+### Example 5: Working with Large Projects
+
+```bash
+proCoder main src/models.py src/views.py src/controllers.py
+
+>>> How do these three files interact? Can you optimize the data flow?
+```
+
+The AI will understand the context across all loaded files and suggest coordinated changes.
+
 ## Recent Updates (v0.3.0)
 
-✅ **Implemented Features:**
-*   ✅ **Token Counting:** Accurate token counting with `tiktoken` and automatic context management
-*   ✅ **New File Creation:** Full support for creating new files via AI suggestions
-*   ✅ **Code Search:** Built-in `/search` and `/find` commands for codebase exploration
-*   ✅ **Undo/Redo:** Complete undo/redo functionality with change history tracking
+### What's New
+
+Version 0.3.0 is a major upgrade that transforms proCoder from a basic CLI agent into a production-ready coding assistant with advanced features comparable to commercial tools.
+
+| Feature | v0.2.0 | v0.3.0 |
+|---------|--------|--------|
+| **File Creation** | ❌ Not supported | ✅ Full support with preview & approval |
+| **Code Search** | ❌ None | ✅ Regex search + definition finder |
+| **Token Counting** | ⚠️ Approximate (8K hardcoded) | ✅ Accurate with tiktoken, model-specific |
+| **Context Management** | ⚠️ Basic message truncation | ✅ Smart limits + auto-truncation |
+| **Undo/Redo** | ❌ None (.bak files only) | ✅ Full history (50 operations) |
+| **Change Tracking** | ❌ None | ✅ Timestamps, file lists, status |
+| **Safety** | ⚠️ Could exceed token limits | ✅ Warnings + automatic protection |
+
+### New Features Details
+
+**🎯 New File Creation**
+- AI can propose and create new files in your project
+- Full content preview before creation
+- Automatic loading into context
+- Undo support for created files
+
+**🔍 Code Search & Grep**
+- `/search <pattern> [files]` - Regex-based code search
+- `/find <identifier> [files]` - Locate function/class definitions
+- Smart binary file detection
+- Context lines around matches
+- Exclusion of common directories (.git, node_modules, etc.)
+
+**🧠 Token Counting & Context Management**
+- Accurate counting with `tiktoken` library
+- Support for all major models (GPT-4, Claude, Gemini, etc.)
+- Real-time usage display with color-coded warnings
+- Automatic truncation when approaching limits
+- Preserves system prompts during truncation
+
+**⏮️ Undo/Redo Functionality**
+- `/undo` - Revert the last file operation
+- `/redo` - Reapply undone changes
+- `/history` - View complete change history
+- Tracks up to 50 operations with timestamps
+- Works for both modifications and file creation
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue: "OPENROUTER_API_KEY not found"**
+```bash
+# Solution: Make sure .env file exists and contains your API key
+cp .env.example .env
+# Edit .env and add: OPENROUTER_API_KEY="sk-or-v1-..."
+```
+
+**Issue: "tiktoken not installed" warning**
+```bash
+# Solution: Reinstall with all dependencies
+pip install -e .
+# Or install tiktoken separately
+pip install tiktoken
+```
+
+**Issue: Token limit warnings**
+```bash
+# Solutions:
+1. Use /clear to start fresh conversation
+2. /drop files you don't need anymore
+3. Load fewer files at once
+4. The assistant will auto-truncate if severely over limit
+```
+
+**Issue: Changes not appearing in files**
+```bash
+# Check:
+1. Did you approve the changes? (type 'y' when prompted)
+2. Check file permissions
+3. Use /history to see if changes were recorded
+4. Try /undo then /redo to reapply
+```
+
+**Issue: Readline/command history not working (Linux/macOS)**
+```bash
+# Install readline development headers
+# Ubuntu/Debian:
+sudo apt-get install libreadline-dev
+# macOS: Usually included, try reinstalling Python
+```
+
+**Issue: Model responses are slow or timing out**
+```bash
+# Solutions:
+1. Try a faster model (e.g., gemini-flash-1.5)
+2. Reduce context by loading fewer files
+3. Check your internet connection
+4. Verify OpenRouter API status
+```
+
+### Debug Mode
+
+To see more detailed information:
+```bash
+# Check context being sent to AI
+>>> /context
+
+# View token usage and limits
+# (Automatically displayed before each AI call)
+
+# Check what files are loaded
+>>> /files
+
+# View complete change history
+>>> /history
+```
+
+### Getting Help
+
+If you encounter issues:
+1. Check the [Issues](https://github.com/KanaparthySaiSreekar/proCoder/issues) page
+2. Review the troubleshooting section above
+3. Open a new issue with:
+   - Your Python version (`python --version`)
+   - Your OS
+   - Complete error message
+   - Steps to reproduce
+
+## Dependencies
+
+proCoder uses the following key libraries:
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| `openai` | ≥1.10.0 | OpenRouter API communication |
+| `tiktoken` | ≥0.5.0 | Accurate token counting |
+| `rich` | ≥13.0.0 | Beautiful terminal UI |
+| `typer` | ≥0.9.0 | CLI framework |
+| `python-dotenv` | ≥1.0.0 | Environment configuration |
+
+All dependencies are automatically installed when you run `pip install -e .`
+
+## Configuration Options
+
+Edit your `.env` file to customize proCoder:
+
+```bash
+# Required
+OPENROUTER_API_KEY="sk-or-v1-..."
+
+# Optional - Model Selection
+AI_MODEL_NAME="google/gemini-flash-1.5"  # Fast and free
+# Other options:
+# "anthropic/claude-3-sonnet"
+# "openai/gpt-4"
+# "meta-llama/llama-3-70b"
+
+# Optional - Git Integration
+GIT_AUTO_STAGE=false    # Auto-stage changes
+GIT_AUTO_COMMIT=false   # Auto-commit changes
+
+# Optional - OpenRouter Tracking
+YOUR_SITE_URL="https://your-site.com"
+YOUR_SITE_NAME="Your App Name"
+```
+
+### Recommended Models
+
+| Model | Speed | Cost | Best For |
+|-------|-------|------|----------|
+| `google/gemini-flash-1.5` | ⚡⚡⚡ | Free | General use, large contexts |
+| `anthropic/claude-3-sonnet` | ⚡⚡ | $$ | Complex reasoning |
+| `openai/gpt-4` | ⚡ | $$$ | Highest quality |
+| `meta-llama/llama-3-70b` | ⚡⚡ | $ | Open source |
+
+Check [OpenRouter Models](https://openrouter.ai/models) for the complete list and pricing.
 
 ## Future Improvements & Ideas
 
-*   **Advanced Code Extraction:** Improve the reliability of extracting code blocks, potentially by prompting the AI for a more structured output format (e.g., JSON containing file changes).
-*   **Enhanced Git Integration:**
-    *   Show `git status` or branch info more proactively.
-    *   Option to automatically generate commit messages based on the changes.
-    *   Support for diffing against specific commits or branches.
-    *   Consider using `GitPython` library for more complex interactions (optional dependency).
-*   **Async API Calls:** Implement async/await for better performance with multiple operations.
-*   **Context Summarization:** Add intelligent summarization for very long conversations.
-*   **Configuration File:** Move more settings (e.g., prompts, model parameters like temperature) to a dedicated config file (e.g., `config.toml`).
-*   **Testing:** Add comprehensive unit and integration tests.
-*   **Multi-file Refactoring:** Develop better strategies for coordinated changes across multiple files.
-*   **Plugin System:** Allow extending functionality with custom commands or integrations.
-*   **Error Handling:** More granular error reporting and recovery for API and file operations.
-*   **Windows `pyreadline3`:** Conditionally install and import `pyreadline3` on Windows for better line editing, similar to the built-in `readline` on Unix-like systems.
+*   **Advanced Code Extraction:** Improve the reliability of extracting code blocks with structured output (e.g., JSON)
+*   **Enhanced Git Integration:** Auto-generate commit messages, diff against specific commits
+*   **Async API Calls:** Implement async/await for better performance
+*   **Context Summarization:** Intelligent summarization for very long conversations
+*   **Configuration File:** Move settings to `config.toml`
+*   **Testing:** Add comprehensive unit and integration tests
+*   **Multi-file Refactoring:** Better strategies for coordinated changes
+*   **Plugin System:** Custom commands and integrations
+*   **Windows Support:** Better `pyreadline3` integration
 
 ## Contributing
 
