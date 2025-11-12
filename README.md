@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](https://github.com/KanaparthySaiSreekar/proCoder)
+[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](https://github.com/KanaparthySaiSreekar/proCoder)
 
 **proCoder** is a production-ready AI coding assistant that runs directly in your terminal. Powered by models accessible via [OpenRouter.ai](https://openrouter.ai/), it provides advanced features like file editing, code search, undo/redo, and intelligent context management.
 
@@ -12,6 +12,9 @@
 - 🧠 **Smart context management** - Never exceed token limits with automatic monitoring and warnings
 - 🔒 **Safe by default** - Review diffs before applying any changes
 - ⚡ **Fast & responsive** - Streaming responses and efficient token usage
+- 🔄 **Multi-model switching** - Switch between 12+ AI models on the fly (Claude, GPT-4, Gemini, Llama, etc.)
+- 💾 **Persistent memory** - Remembers project facts, preferences, and context across sessions
+- 🚀 **Easy setup** - Interactive wizard gets you started in under 2 minutes
 
 ## Table of Contents
 
@@ -20,7 +23,7 @@
 - [Installation](#installation)
 - [Usage](#usage)
 - [Examples](#examples)
-- [Recent Updates](#recent-updates-v030)
+- [Recent Updates](#recent-updates)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
@@ -37,12 +40,16 @@ source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 # 2. Install
 pip install -e .
 
-# 3. Configure (add your OpenRouter API key)
-cp .env.example .env
-# Edit .env and add: OPENROUTER_API_KEY="sk-or-v1-..."
+# 3. Interactive Setup (opens browser, validates key, saves config)
+proCoder setup
 
 # 4. Start coding!
 proCoder main path/to/your/code.py
+```
+
+**Alternative:** If you already have an OpenRouter API key, you can use quick login:
+```bash
+proCoder login  # Enter your existing API key
 ```
 
 ## Features
@@ -63,6 +70,10 @@ proCoder main path/to/your/code.py
 *   **Change History:** Track all modifications with `/history` command.
 *   **Token Counting:** Accurate token counting using `tiktoken` with automatic context management.
 *   **Smart Context Management:** Automatic warning and truncation when approaching model token limits.
+*   **Multi-Model Switching:** Switch between 12+ AI models dynamically with `/model` command (Claude Opus/Sonnet/Haiku, GPT-4/3.5, Gemini Flash/Pro, Llama 3, Mistral, DeepSeek Coder, and more).
+*   **Persistent Memory:** Project-level memory system that remembers facts, preferences, architectural notes, and todos across sessions.
+*   **Interactive Setup Wizard:** First-time setup opens browser, validates API key, and configures everything automatically.
+*   **Model Browser:** Explore 100+ available models with pricing, context limits, and descriptions via `proCoder models`.
 
 ### Git Integration (Optional)
 *   Detects if running within a Git repository.
@@ -79,6 +90,7 @@ proCoder main path/to/your/code.py
 *   📁 **proCoder-project/** *(Root Directory)*
     *   📄 `.env` - Local environment variables (API Key, secrets - *Git ignored*)
     *   📄 `.env.example` - Example environment file template
+    *   📄 `.procoder_memory.json` - Persistent project memory (*Git ignored*)
     *   📄 `README.md` - This documentation file
     *   📄 `setup.py` - Package metadata and installation script
     *   📄 `requirements.txt` - *(Optional)* List of dependencies
@@ -94,6 +106,9 @@ proCoder main path/to/your/code.py
         *   📄 `utils.py` - Utility functions (diffing, code extraction, etc.)
         *   📄 `search_utils.py` - Code search and grep functionality
         *   📄 `token_counter.py` - Token counting and context management
+        *   📄 `model_manager.py` - Multi-model switching and management (v0.4.0)
+        *   📄 `memory_system.py` - Persistent session memory across restarts (v0.4.0)
+        *   📄 `openrouter_integration.py` - Setup wizard, login, and model browser (v0.4.0)
         *   📄 `.gitignore` - Specifies intentionally untracked files for Git
 
 
@@ -171,6 +186,9 @@ proCoder main path/to/your/code.py
         *   `/load <path>...`: Load or reload file(s) into context.
         *   `/drop <path>...`: Remove file(s) from context.
         *   `/files`: List currently loaded files.
+        *   `/model [name|list|back]`: Switch AI model or list available models.
+        *   `/or [account|models|help]`: OpenRouter account & model management.
+        *   `/remember [show|fact|pref]`: Manage persistent project memory.
         *   `/search <pattern> [files]`: Search for pattern in files (regex supported).
         *   `/find <identifier> [files]`: Find definitions of functions/classes.
         *   `/undo`: Undo the last file change.
@@ -183,11 +201,16 @@ proCoder main path/to/your/code.py
 
 ### Command Reference
 
+#### In-Session Commands
+
 | Command | Description | Example |
 |---------|-------------|---------|
 | `/load <path>...` | Load files into context | `/load src/main.py tests/test.py` |
 | `/drop <path>...` | Remove files from context | `/drop tests/test.py` |
 | `/files` | List loaded files | `/files` |
+| `/model [name\|list\|back]` | Switch AI model | `/model sonnet`, `/model list` |
+| `/or [account\|models\|help]` | OpenRouter management | `/or models`, `/or account` |
+| `/remember [show\|fact\|pref]` | Persistent memory | `/remember fact framework=FastAPI` |
 | `/search <pattern> [glob]` | Search for regex pattern | `/search "def.*test" *.py` |
 | `/find <name> [glob]` | Find function/class definitions | `/find MyClass *.py` |
 | `/undo` | Undo last file change | `/undo` |
@@ -197,6 +220,16 @@ proCoder main path/to/your/code.py
 | `/context` | Debug: show AI context | `/context` |
 | `/help` | Show help message | `/help` |
 | `/quit` or `/exit` | Exit proCoder | `/quit` |
+
+#### CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `proCoder setup` | Interactive setup wizard (first-time setup) |
+| `proCoder login` | Quick login for existing users |
+| `proCoder main [files...]` | Start interactive coding session |
+| `proCoder models [provider]` | Browse all available AI models |
+| `proCoder account` | View OpenRouter account info & usage |
 
 5.  **Search & Find:**
     ```
@@ -272,11 +305,109 @@ proCoder main src/models.py src/views.py src/controllers.py
 
 The AI will understand the context across all loaded files and suggest coordinated changes.
 
-## Recent Updates (v0.3.0)
+### Example 6: Switching AI Models (v0.4.0)
 
-### What's New
+```bash
+proCoder main src/algorithm.py
 
-Version 0.3.0 is a major upgrade that transforms proCoder from a basic CLI agent into a production-ready coding assistant with advanced features comparable to commercial tools.
+>>> /model list                    # See all available models
+>>> /model gpt4                    # Switch to GPT-4 for complex reasoning
+>>> Optimize this sorting algorithm for performance
+>>> /model deepseek                # Switch to DeepSeek Coder for implementation
+>>> Implement the optimized version
+>>> /model back                    # Return to previous model
+```
+
+Choose the best model for each task without restarting.
+
+### Example 7: Using Project Memory (v0.4.0)
+
+```bash
+proCoder main
+
+>>> /remember fact framework=FastAPI technology
+>>> /remember fact database=PostgreSQL technology
+>>> /remember pref code_style=Google
+>>> /remember arch API "RESTful design with async endpoints"
+
+# Later, or in a new session:
+>>> /remember show
+# AI now knows your project uses FastAPI + PostgreSQL and prefers Google style
+
+>>> Create a new database model for users
+# AI automatically applies your preferences and architectural patterns
+```
+
+Build up project knowledge that persists across sessions.
+
+### Example 8: Easy First-Time Setup (v0.4.0)
+
+```bash
+# Brand new installation
+proCoder setup
+
+# Interactive wizard:
+# 1. Opens browser to openrouter.ai/keys
+# 2. You create/copy your API key
+# 3. Paste key (validated automatically)
+# 4. Shows your account credits & usage
+# 5. Ready to code!
+
+proCoder main    # Start coding immediately
+```
+
+From zero to coding in under 2 minutes.
+
+## Recent Updates
+
+### Version 0.4.0 - Professional-Grade Features (Latest)
+
+Version 0.4.0 adds sophisticated multi-model management and persistent memory capabilities, making proCoder competitive with enterprise tools like Claude Code and Cursor CLI.
+
+**🔄 Multi-Model Switching**
+- Switch between 12+ AI models on the fly without restarting
+- Support for Anthropic (Claude 3 Opus/Sonnet/Haiku), OpenAI (GPT-4/3.5 Turbo), Google (Gemini Flash/Pro), Meta (Llama 3), Mistral, DeepSeek Coder, and more
+- Smart model aliases: `/model opus`, `/model gpt4`, `/model gemini`
+- Partial name matching: `/model sonnet` automatically finds `claude-3-sonnet`
+- Model comparison table with speed, cost, context window, and best use cases
+- Model history: `/model back` to switch to previous model
+
+**💾 Persistent Memory System**
+- Remembers project facts, user preferences, and architectural decisions across sessions
+- Store information in categories: facts, preferences, patterns, architecture, todos
+- Memory stored in `.procoder_memory.json` at git repo root
+- Commands:
+  - `/remember fact framework=FastAPI technology` - Store project facts
+  - `/remember pref indent=4` - Save user preferences
+  - `/remember pattern <description>` - Record recurring patterns
+  - `/remember arch <component> <description>` - Document architecture
+  - `/remember show [section]` - View stored memory
+- Automatic context injection: AI sees relevant memory in every conversation
+- Export and clear capabilities for memory management
+
+**🚀 Easy Setup & Login**
+- Interactive setup wizard: `proCoder setup`
+  - Opens browser to OpenRouter.ai
+  - Validates API key automatically
+  - Saves to `.env` file
+  - Shows account dashboard
+- Quick login for existing users: `proCoder login`
+- Account management: `proCoder account` - View credits, usage, rate limits
+- Model browser: `proCoder models [provider]` - Explore 100+ models with pricing
+- In-session OpenRouter commands via `/or`
+
+| Feature | v0.3.0 | v0.4.0 |
+|---------|--------|--------|
+| **Model Switching** | ❌ Manual .env edit required | ✅ Dynamic switching with `/model` |
+| **Model Selection** | ⚠️ One model per session | ✅ 12+ models, switch anytime |
+| **Persistent Memory** | ❌ None | ✅ Facts, preferences, architecture, todos |
+| **Setup Experience** | ⚠️ Manual .env configuration | ✅ Interactive wizard with browser |
+| **Account Management** | ❌ None | ✅ Dashboard with usage & credits |
+| **Model Discovery** | ❌ Check OpenRouter website | ✅ Built-in browser with filtering |
+
+### Version 0.3.0 - Advanced Coding Features
+
+Version 0.3.0 transformed proCoder from a basic CLI agent into a production-ready coding assistant with advanced features comparable to commercial tools.
 
 | Feature | v0.2.0 | v0.3.0 |
 |---------|--------|--------|
@@ -323,7 +454,13 @@ Version 0.3.0 is a major upgrade that transforms proCoder from a basic CLI agent
 
 **Issue: "OPENROUTER_API_KEY not found"**
 ```bash
-# Solution: Make sure .env file exists and contains your API key
+# Solution 1: Use the interactive setup wizard (easiest)
+proCoder setup
+
+# Solution 2: Quick login if you have a key
+proCoder login
+
+# Solution 3: Manual setup
 cp .env.example .env
 # Edit .env and add: OPENROUTER_API_KEY="sk-or-v1-..."
 ```
@@ -365,10 +502,48 @@ sudo apt-get install libreadline-dev
 **Issue: Model responses are slow or timing out**
 ```bash
 # Solutions:
-1. Try a faster model (e.g., gemini-flash-1.5)
+1. Try a faster model (v0.4.0): /model gemini or /model haiku
 2. Reduce context by loading fewer files
 3. Check your internet connection
-4. Verify OpenRouter API status
+4. Verify OpenRouter API status at https://status.openrouter.ai
+```
+
+**Issue: Model switching not working (v0.4.0)**
+```bash
+# Check available models
+>>> /model list
+
+# Use exact key or alias
+>>> /model sonnet          # ✓ Correct
+>>> /model claude-sonnet   # ✓ Also works (partial match)
+>>> /model Claude          # ✗ Won't work (too generic)
+
+# View current model
+>>> /model info
+```
+
+**Issue: Memory not persisting (v0.4.0)**
+```bash
+# Check if memory file exists
+ls .procoder_memory.json
+
+# Memory is stored in git repo root, or current directory if not in a repo
+# Verify you're in the same directory/repo
+
+# View memory
+>>> /remember show
+
+# If memory file is corrupted, you can delete and start fresh
+rm .procoder_memory.json
+```
+
+**Issue: Setup wizard won't open browser (v0.4.0)**
+```bash
+# Manual steps:
+1. Visit https://openrouter.ai/keys in your browser
+2. Create an account and API key
+3. Run: proCoder login
+4. Paste your key when prompted
 ```
 
 ### Debug Mode
@@ -439,14 +614,31 @@ YOUR_SITE_NAME="Your App Name"
 
 ### Recommended Models
 
-| Model | Speed | Cost | Best For |
-|-------|-------|------|----------|
-| `google/gemini-flash-1.5` | ⚡⚡⚡ | Free | General use, large contexts |
-| `anthropic/claude-3-sonnet` | ⚡⚡ | $$ | Complex reasoning |
-| `openai/gpt-4` | ⚡ | $$$ | Highest quality |
-| `meta-llama/llama-3-70b` | ⚡⚡ | $ | Open source |
+**New in v0.4.0:** Switch models dynamically with `/model <name>` command!
 
-Check [OpenRouter Models](https://openrouter.ai/models) for the complete list and pricing.
+| Model Key | Full ID | Speed | Cost | Best For |
+|-----------|---------|-------|------|----------|
+| `gemini-flash` | `google/gemini-flash-1.5` | ⚡⚡⚡ | Free | General use, large contexts (1M tokens) |
+| `sonnet` | `anthropic/claude-3.5-sonnet` | ⚡⚡ | $$ | Balanced performance, coding |
+| `opus` | `anthropic/claude-3-opus` | ⚡ | $$$ | Complex reasoning, long analysis |
+| `haiku` | `anthropic/claude-3-haiku` | ⚡⚡⚡ | $ | Fast responses |
+| `gpt4` | `openai/gpt-4` | ⚡ | $$$ | Highest quality |
+| `gpt-4-turbo` | `openai/gpt-4-turbo` | ⚡⚡ | $$ | Long documents (128K) |
+| `deepseek` | `deepseek/deepseek-coder` | ⚡⚡ | $ | Code generation & refactoring |
+| `llama` | `meta-llama/llama-3-70b` | ⚡⚡ | $ | Open source alternative |
+
+**Quick Switching:**
+```bash
+>>> /model gemini        # Start with free Gemini Flash
+>>> /model gpt4          # Switch to GPT-4 for complex task
+>>> /model deepseek      # Use DeepSeek for code generation
+>>> /model list          # See all 12+ available models
+>>> /model back          # Return to previous model
+```
+
+Or browse all 100+ models: `proCoder models` or `/or models`
+
+Check [OpenRouter Models](https://openrouter.ai/models) for the complete list and real-time pricing.
 
 ## Future Improvements & Ideas
 

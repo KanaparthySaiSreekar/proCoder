@@ -32,7 +32,7 @@ if os.path.exists("README.md"):
 
 setup(
     name='proCoder-ai', # Package name on PyPI
-    version='0.3.0',   # Major feature update: file creation, search, token counting, undo/redo
+    version='0.4.0',   # Added multi-model switching, persistent memory, OpenRouter integration
     author='Your Name / Your Org', # Change this
     author_email='your.email@example.com', # Change this
     description='An AI coding assistant for your terminal powered by OpenRouter.',

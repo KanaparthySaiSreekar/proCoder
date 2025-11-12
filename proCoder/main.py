@@ -32,6 +32,7 @@ from . import git_utils
 from . import search_utils
 from . import model_manager
 from . import memory_system
+from . import openrouter_integration
 
 # --- Setup ---
 app = typer.Typer(help="proCoder: AI assistant for code editing in your terminal.")
@@ -374,6 +375,7 @@ def main(
     console.print("  /drop <path>...            : Remove file(s) from context.")
     console.print("  /files                     : List currently loaded files.")
     console.print("  /model [name|list|back]    : Switch AI model or list available models.")
+    console.print("  /or [account|models|help]  : OpenRouter account & model management.")
     console.print("  /remember [show|fact|pref] : Manage persistent project memory.")
     console.print("  /search <pattern> [files]  : Search for pattern in files (regex supported).")
     console.print("  /find <identifier> [files] : Find definitions of functions/classes.")
@@ -633,6 +635,49 @@ def main(
             console.print(history_info)
             continue
 
+        elif command.startswith("/openrouter") or command.startswith("/or"):
+            parts = user_input.split(maxsplit=1)
+            subcommand = parts[1] if len(parts) > 1 else "account"
+
+            if subcommand == "account" or subcommand == "info":
+                # Show account dashboard
+                or_client = openrouter_integration.get_openrouter_client()
+                if not or_client:
+                    or_client = openrouter_integration.initialize_openrouter_client(config.API_KEY)
+                or_client.display_account_dashboard()
+            elif subcommand == "models" or subcommand.startswith("browse"):
+                # Browse available models
+                or_client = openrouter_integration.get_openrouter_client()
+                if not or_client:
+                    or_client = openrouter_integration.initialize_openrouter_client(config.API_KEY)
+
+                category = parts[1].split(maxsplit=1)[1] if len(parts) > 1 and ' ' in parts[1] else None
+                or_client.display_model_browser(category)
+            elif subcommand == "validate":
+                # Validate current API key
+                or_client = openrouter_integration.OpenRouterClient(config.API_KEY)
+                if or_client.validate_api_key():
+                    console.print("[green]✓ API key is valid![/green]")
+                    or_client.display_account_dashboard()
+                else:
+                    console.print("[red]✗ API key is invalid or expired.[/red]")
+                    console.print("[yellow]Run 'proCoder setup' to configure a new key.[/yellow]")
+            elif subcommand == "help":
+                console.print("\n[bold cyan]OpenRouter Commands:[/bold cyan]")
+                console.print("  /or account     : View account info and usage")
+                console.print("  /or models      : Browse all available models")
+                console.print("  /or browse <provider> : Browse models from specific provider")
+                console.print("  /or validate    : Validate your API key")
+                console.print("\n[dim]Full setup commands:[/dim]")
+                console.print("  proCoder setup  : Interactive setup wizard")
+                console.print("  proCoder login  : Quick login for existing users")
+                console.print("  proCoder models : Browse models from CLI")
+                console.print("  proCoder account: View account info from CLI")
+            else:
+                console.print(f"[yellow]Unknown OpenRouter subcommand: {subcommand}[/yellow]")
+                console.print("[dim]Use /or help to see available commands[/dim]")
+            continue
+
         elif command == "/help":
              # Re-print help info
              console.print("\nAvailable commands:")
@@ -640,6 +685,7 @@ def main(
              console.print("  /drop <path>...            : Remove file(s) from context.")
              console.print("  /files                     : List currently loaded files.")
              console.print("  /model [name|list|back]    : Switch AI model or list available models.")
+             console.print("  /or [account|models|help]  : OpenRouter account & model management.")
              console.print("  /remember [show|fact|pref] : Manage persistent project memory.")
              console.print("  /search <pattern> [files]  : Search for pattern in files (regex supported).")
              console.print("  /find <identifier> [files] : Find definitions of functions/classes.")
@@ -659,6 +705,76 @@ def main(
         # --- End Core Interaction ---
 
     console.print("[bold cyan]Exiting proCoder. Goodbye![/bold cyan]")
+
+
+@app.command()
+def setup():
+    """
+    Interactive setup wizard for first-time configuration.
+    Guides you through getting and configuring your OpenRouter API key.
+    """
+    console.print(Panel("[bold magenta]proCoder Setup Wizard[/bold magenta]", expand=False))
+    api_key = openrouter_integration.setup_wizard()
+
+    if api_key:
+        console.print("\n[bold green]✓ Setup complete![/bold green]")
+        console.print("[dim]You can now run: proCoder main[/dim]")
+    else:
+        console.print("\n[yellow]Setup incomplete. You can run 'proCoder setup' again later.[/yellow]")
+
+
+@app.command()
+def login():
+    """
+    Quick login for existing OpenRouter users.
+    Enter your API key to authenticate.
+    """
+    api_key = openrouter_integration.quick_login()
+
+    if api_key:
+        console.print("\n[green]✓ Login successful![/green]")
+    else:
+        console.print("\n[yellow]Login cancelled.[/yellow]")
+
+
+@app.command()
+def models(
+    category: Annotated[Optional[str], typer.Argument(help="Filter by provider (e.g., 'anthropic', 'openai')")] = None
+):
+    """
+    Browse all available models on OpenRouter.
+    Displays models with pricing, context limits, and descriptions.
+    """
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        client = openrouter_integration.OpenRouterClient(api_key)
+        client.display_model_browser(category)
+    except Exception as e:
+        console.print(f"[red]Error browsing models:[/red] {e}")
+
+
+@app.command()
+def account():
+    """
+    View your OpenRouter account information.
+    Shows usage statistics, credits, and rate limits.
+    """
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        api_key = os.getenv("OPENROUTER_API_KEY")
+
+        if not api_key:
+            console.print("[yellow]No API key found. Run 'proCoder setup' first.[/yellow]")
+            return
+
+        client = openrouter_integration.OpenRouterClient(api_key)
+        client.display_account_dashboard()
+    except Exception as e:
+        console.print(f"[red]Error fetching account info:[/red] {e}")
+
 
 # --- Entry points ---
 
