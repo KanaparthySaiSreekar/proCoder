@@ -33,6 +33,7 @@ from . import search_utils
 from . import model_manager
 from . import memory_system
 from . import openrouter_integration
+from . import ascii_art
 
 # --- Setup ---
 app = typer.Typer(help="proCoder: AI assistant for code editing in your terminal.")
@@ -336,11 +337,30 @@ def main(
     global loaded_files
     global git_repo_root
 
-    console.print(Panel("[bold magenta]Welcome to proCoder AI Assistant![/bold magenta]", expand=False, border_style="blue"))
+    # Display beautiful welcome screen
+    from rich.text import Text
+    from rich.align import Align
+
+    # Create gradient logo
+    logo_text = Text(ascii_art.LOGO, style="bold cyan")
+    tagline = Text("AI-Powered Coding Assistant", style="italic bright_magenta")
+    version = Text(f"v0.4.0  {ascii_art.LIGHTNING} Multi-Model  {ascii_art.BRAIN} Smart Memory  {ascii_art.ROCKET} Easy Setup", style="dim cyan")
+
+    console.print()
+    console.print(Align.center(logo_text))
+    console.print(Align.center(tagline))
+    console.print(Align.center(version))
+    console.print()
+    console.print(Panel(
+        "[cyan]Professional coding assistant with 12+ AI models at your fingertips[/cyan]",
+        border_style="bright_blue",
+        padding=(0, 2)
+    ))
+    console.print()
 
     initial_load_success = True
     if files:
-        console.print("[blue]Loading initial files...[/blue]")
+        console.print(f"[cyan]{ascii_art.PACKAGE} Loading initial files...[/cyan]")
         for f_path in files:
             # If inside a git repo, try to resolve relative to repo root if path doesn't exist directly
             potential_path = Path(f_path)
@@ -369,23 +389,43 @@ def main(
     # Add system prompts and file context *after* loading initial files
     add_initial_context_to_prompt()
 
+    # Display commands in a beautiful format
+    from rich.table import Table
 
-    console.print("\nType your message or command. Available commands:")
-    console.print("  /load <path>...            : Load or reload file(s) into context.")
-    console.print("  /drop <path>...            : Remove file(s) from context.")
-    console.print("  /files                     : List currently loaded files.")
-    console.print("  /model [name|list|back]    : Switch AI model or list available models.")
-    console.print("  /or [account|models|help]  : OpenRouter account & model management.")
-    console.print("  /remember [show|fact|pref] : Manage persistent project memory.")
-    console.print("  /search <pattern> [files]  : Search for pattern in files (regex supported).")
-    console.print("  /find <identifier> [files] : Find definitions of functions/classes.")
-    console.print("  /undo                      : Undo the last file change.")
-    console.print("  /redo                      : Redo the last undone change.")
-    console.print("  /history                   : Show change history.")
-    console.print("  /clear                     : Clear conversation history.")
-    console.print("  /context                   : Show the current context being sent to the AI.")
-    console.print("  /help                      : Show this help message again.")
-    console.print("  /quit or /exit             : Exit the assistant.")
+    console.print()
+    commands_table = Table(title="[bold cyan]Available Commands[/bold cyan]", border_style="bright_blue", show_header=True, header_style="bold magenta")
+    commands_table.add_column("Command", style="cyan", no_wrap=True)
+    commands_table.add_column("Description", style="white")
+
+    # File operations
+    commands_table.add_row("[yellow]/load[/yellow] <path>...", "Load or reload file(s) into context")
+    commands_table.add_row("[yellow]/drop[/yellow] <path>...", "Remove file(s) from context")
+    commands_table.add_row("[yellow]/files[/yellow]", "List currently loaded files")
+
+    # AI & Models
+    commands_table.add_row("[green]/model[/green] [name|list|back]", f"{ascii_art.BRAIN} Switch AI model or list available models")
+    commands_table.add_row("[green]/or[/green] [account|models|help]", f"{ascii_art.ROCKET} OpenRouter account & model management")
+
+    # Memory
+    commands_table.add_row("[magenta]/remember[/magenta] [show|fact|pref]", f"{ascii_art.SPARKLE} Manage persistent project memory")
+
+    # Code search
+    commands_table.add_row("[blue]/search[/blue] <pattern> [files]", "Search for pattern in files (regex)")
+    commands_table.add_row("[blue]/find[/blue] <identifier> [files]", "Find definitions of functions/classes")
+
+    # History
+    commands_table.add_row("[red]/undo[/red]", "Undo the last file change")
+    commands_table.add_row("[red]/redo[/red]", "Redo the last undone change")
+    commands_table.add_row("[red]/history[/red]", "Show change history")
+
+    # Utility
+    commands_table.add_row("/clear", "Clear conversation history")
+    commands_table.add_row("/context", "Show the current context being sent to the AI")
+    commands_table.add_row("/help", "Show this help message again")
+    commands_table.add_row("/quit or /exit", "Exit the assistant")
+
+    console.print(commands_table)
+    console.print()
 
     # --- Main Interaction Loop ---
     while True:
