@@ -32,10 +32,10 @@ if os.path.exists("README.md"):
 
 setup(
     name='proCoder-ai', # Package name on PyPI
-    version='0.4.0',   # Added multi-model switching, persistent memory, OpenRouter integration
+    version='0.5.0',   # Added session resume, code review, git push/pull, approval modes, web search, image support
     author='Kanaparthy Sai Sreekar',
     author_email='kanapasai@gmail.com',
-    description='Professional AI coding assistant for your terminal - multi-model switching, persistent memory, and OpenRouter integration',
+    description='Professional AI coding assistant for your terminal - session resume, code review, git workflow, and more',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://github.com/KanaparthySaiSreekar/proCoder',

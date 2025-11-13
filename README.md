@@ -2,9 +2,23 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](https://github.com/KanaparthySaiSreekar/proCoder)
+[![Version](https://img.shields.io/badge/version-0.5.0-green.svg)](https://github.com/KanaparthySaiSreekar/proCoder)
 
-**proCoder** is a production-ready AI coding assistant that runs directly in your terminal. Powered by models accessible via [OpenRouter.ai](https://openrouter.ai/), it provides advanced features like file editing, code search, undo/redo, and intelligent context management.
+**proCoder** is a production-ready AI coding assistant that runs directly in your terminal. Powered by models accessible via [OpenRouter.ai](https://openrouter.ai/), it provides advanced features like file editing, code search, undo/redo, intelligent context management, **session resume**, **code review**, **git push/pull**, and more.
+
+## 🎉 New in v0.5.0
+
+✨ **Session Management** - Resume conversations with full context
+🔍 **Code Review** - Review diffs, commits, and PRs with AI assistance
+🚀 **Git Push/Pull** - Complete git workflow with retry logic
+🔐 **Approval Modes** - Fine-grained control (read-only/auto/full-access)
+🌐 **Web Search** - Search the web, Stack Overflow, and GitHub
+🖼️ **Image Support** - Attach screenshots and diagrams
+⌨️ **Shell Completions** - Bash, Zsh, and Fish support
+📁 **File Picker** - Fuzzy file search with @ mentions
+🔧 **Custom Commands** - Extensible slash command system
+
+See [UPDATE_NOTES.md](UPDATE_NOTES.md) for complete details.
 
 ## 🚀 One-Line Install
 
