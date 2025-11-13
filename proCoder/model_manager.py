@@ -1,266 +1,280 @@
 """
 Model management for switching between different AI models dynamically.
+Fetches real-time models from OpenRouter API.
 """
 from typing import Dict, List, Optional
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+import requests
+import time
 
 from . import ascii_art
+from . import config
 
 console = Console()
 
-# Popular models available on OpenRouter with their capabilities
-AVAILABLE_MODELS = {
-    # Anthropic Models
-    "claude-3-opus": {
-        "id": "anthropic/claude-3-opus",
-        "name": "Claude 3 Opus",
-        "speed": "⚡",
-        "cost": "$$$",
-        "context": "200K",
-        "best_for": "Complex reasoning, long context"
-    },
-    "claude-3-sonnet": {
-        "id": "anthropic/claude-3.5-sonnet",
-        "name": "Claude 3.5 Sonnet",
-        "speed": "⚡⚡",
-        "cost": "$$",
-        "context": "200K",
-        "best_for": "Balanced performance"
-    },
-    "claude-3-haiku": {
-        "id": "anthropic/claude-3-haiku",
-        "name": "Claude 3 Haiku",
-        "speed": "⚡⚡⚡",
-        "cost": "$",
-        "context": "200K",
-        "best_for": "Fast responses"
-    },
+# Cache for fetched models
+_models_cache = None
+_cache_timestamp = 0
+CACHE_DURATION = 3600  # 1 hour
 
-    # OpenAI Models
-    "gpt-4": {
-        "id": "openai/gpt-4",
-        "name": "GPT-4",
-        "speed": "⚡",
-        "cost": "$$$",
-        "context": "8K",
-        "best_for": "Highest quality"
-    },
-    "gpt-4-turbo": {
-        "id": "openai/gpt-4-turbo",
-        "name": "GPT-4 Turbo",
-        "speed": "⚡⚡",
-        "cost": "$$",
-        "context": "128K",
-        "best_for": "Long documents"
-    },
-    "gpt-3.5-turbo": {
-        "id": "openai/gpt-3.5-turbo",
-        "name": "GPT-3.5 Turbo",
-        "speed": "⚡⚡⚡",
-        "cost": "$",
-        "context": "16K",
-        "best_for": "Fast, cheap"
-    },
 
-    # Google Models
-    "gemini-pro": {
-        "id": "google/gemini-pro",
-        "name": "Gemini Pro",
-        "speed": "⚡⚡",
-        "cost": "$$",
-        "context": "32K",
-        "best_for": "Multimodal tasks"
-    },
-    "gemini-flash": {
-        "id": "google/gemini-flash-1.5",
-        "name": "Gemini 1.5 Flash",
-        "speed": "⚡⚡⚡",
-        "cost": "Free",
-        "context": "1M",
-        "best_for": "Huge contexts, free"
-    },
+def fetch_models_from_openrouter() -> List[Dict]:
+    """Fetch available models from OpenRouter API."""
+    global _models_cache, _cache_timestamp
 
-    # Meta Models
-    "llama-70b": {
-        "id": "meta-llama/llama-3-70b-instruct",
-        "name": "Llama 3 70B",
-        "speed": "⚡⚡",
-        "cost": "$",
-        "context": "8K",
-        "best_for": "Open source"
-    },
+    # Return cached models if still valid
+    if _models_cache and (time.time() - _cache_timestamp) < CACHE_DURATION:
+        return _models_cache
 
-    # Mistral Models
-    "mistral-large": {
-        "id": "mistralai/mistral-large",
-        "name": "Mistral Large",
-        "speed": "⚡⚡",
-        "cost": "$$",
-        "context": "32K",
-        "best_for": "European alternative"
-    },
+    try:
+        response = requests.get(
+            "https://openrouter.ai/api/v1/models",
+            timeout=10
+        )
+        if response.status_code == 200:
+            data = response.json()
+            _models_cache = data.get("data", [])
+            _cache_timestamp = time.time()
+            return _models_cache
+    except Exception as e:
+        console.print(f"[dim]Could not fetch models from OpenRouter: {e}[/dim]")
 
-    # Coding-specific models
-    "deepseek-coder": {
-        "id": "deepseek/deepseek-coder",
-        "name": "DeepSeek Coder",
-        "speed": "⚡⚡",
-        "cost": "$",
-        "context": "16K",
-        "best_for": "Code generation"
-    },
-    "codellama-70b": {
-        "id": "meta-llama/codellama-70b-instruct",
-        "name": "CodeLlama 70B",
-        "speed": "⚡⚡",
-        "cost": "$",
-        "context": "16K",
-        "best_for": "Code-focused"
-    }
-}
+    return []
 
-# Model aliases for easier access
-MODEL_ALIASES = {
-    "opus": "claude-3-opus",
-    "sonnet": "claude-3-sonnet",
-    "haiku": "claude-3-haiku",
-    "gpt4": "gpt-4",
-    "gpt3": "gpt-3.5-turbo",
-    "gemini": "gemini-flash",
-    "llama": "llama-70b",
-    "mistral": "mistral-large",
-    "deepseek": "deepseek-coder",
-    "codellama": "codellama-70b"
-}
+
+def get_free_models(models: List[Dict]) -> List[Dict]:
+    """Filter for free models."""
+    free_models = []
+    for model in models:
+        pricing = model.get("pricing", {})
+        prompt_cost = float(pricing.get("prompt", "1"))
+        completion_cost = float(pricing.get("completion", "1"))
+
+        if prompt_cost == 0 and completion_cost == 0:
+            free_models.append(model)
+
+    return free_models
+
+
+def format_cost(pricing: Dict) -> str:
+    """Format pricing information."""
+    if not pricing:
+        return "?"
+
+    prompt = float(pricing.get("prompt", "0"))
+    completion = float(pricing.get("completion", "0"))
+
+    if prompt == 0 and completion == 0:
+        return "FREE"
+
+    # Calculate average cost per 1M tokens
+    avg_cost = (prompt + completion) / 2
+
+    if avg_cost < 0.5:
+        return "$"
+    elif avg_cost < 5:
+        return "$$"
+    elif avg_cost < 20:
+        return "$$$"
+    else:
+        return "$$$$"
+
+
+def format_context(context_length: int) -> str:
+    """Format context length for display."""
+    if context_length >= 1000000:
+        return f"{context_length // 1000000}M"
+    elif context_length >= 1000:
+        return f"{context_length // 1000}K"
+    else:
+        return str(context_length)
 
 
 class ModelManager:
     """Manages model selection and switching."""
 
-    def __init__(self, default_model: str = "gemini-flash"):
-        self.current_model_key = default_model
+    def __init__(self, default_model: str = "google/gemini-2.0-flash-exp:free"):
+        self.current_model_id = default_model
         self.model_history = []
+        self.models = []
+        self._refresh_models()
 
-    def get_current_model(self) -> Dict:
-        """Get the current model configuration."""
-        return AVAILABLE_MODELS.get(self.current_model_key, AVAILABLE_MODELS["gemini-flash"])
+    def _refresh_models(self):
+        """Refresh the models list from OpenRouter."""
+        self.models = fetch_models_from_openrouter()
 
     def get_current_model_id(self) -> str:
         """Get the OpenRouter model ID for API calls."""
-        return self.get_current_model()["id"]
+        return self.current_model_id
 
     def get_current_model_name(self) -> str:
         """Get the display name of the current model."""
-        return self.get_current_model()["name"]
+        for model in self.models:
+            if model.get("id") == self.current_model_id:
+                return model.get("name", self.current_model_id)
+        return self.current_model_id
 
     def switch_model(self, model_identifier: str) -> bool:
         """
         Switch to a different model.
 
         Args:
-            model_identifier: Model key, alias, or partial name
+            model_identifier: Model ID or partial name
 
         Returns:
             True if switch successful, False otherwise
         """
-        # Try direct key match
-        if model_identifier in AVAILABLE_MODELS:
-            old_model = self.get_current_model_name()
-            self.model_history.append(self.current_model_key)
-            self.current_model_key = model_identifier
-            console.print(f"[green]Switched from {old_model} to {self.get_current_model_name()}[/green]")
-            return True
+        # Refresh models if cache is old
+        if time.time() - _cache_timestamp > CACHE_DURATION:
+            self._refresh_models()
 
-        # Try alias
-        if model_identifier in MODEL_ALIASES:
-            return self.switch_model(MODEL_ALIASES[model_identifier])
+        # Try exact ID match
+        for model in self.models:
+            if model.get("id") == model_identifier:
+                old_model = self.get_current_model_name()
+                self.model_history.append(self.current_model_id)
+                self.current_model_id = model_identifier
+                console.print(f"[green]✓ Switched from {old_model} to {model.get('name')}[/green]")
+                return True
 
         # Try partial match
         matches = []
         search_lower = model_identifier.lower()
-        for key, model in AVAILABLE_MODELS.items():
-            if search_lower in key.lower() or search_lower in model["name"].lower():
-                matches.append(key)
+        for model in self.models:
+            model_id = model.get("id", "").lower()
+            model_name = model.get("name", "").lower()
+            if search_lower in model_id or search_lower in model_name:
+                matches.append(model)
 
         if len(matches) == 1:
-            return self.switch_model(matches[0])
+            return self.switch_model(matches[0]["id"])
         elif len(matches) > 1:
-            console.print(f"[yellow]Multiple matches found:[/yellow]")
-            for match in matches:
-                model = AVAILABLE_MODELS[match]
-                console.print(f"  - {match}: {model['name']}")
-            console.print("[yellow]Please be more specific.[/yellow]")
+            console.print(f"[yellow]Multiple matches found for '{model_identifier}':[/yellow]\n")
+            for i, match in enumerate(matches[:10], 1):
+                console.print(f"  {i}. {match['id']} - {match.get('name', 'Unknown')}")
+            console.print("\n[yellow]Please be more specific with the model ID.[/yellow]")
             return False
 
         console.print(f"[red]Model '{model_identifier}' not found.[/red]")
         console.print("[yellow]Use /model list to see available models.[/yellow]")
         return False
 
-    def list_models(self, category: Optional[str] = None):
+    def list_models(self, filter_text: Optional[str] = None, show_free_only: bool = False):
         """Display available models in a formatted table."""
+        # Refresh models if needed
+        if time.time() - _cache_timestamp > CACHE_DURATION:
+            self._refresh_models()
+
+        if not self.models:
+            console.print("[yellow]Could not fetch models. Please check your internet connection.[/yellow]")
+            return
+
+        # Filter models
+        filtered_models = self.models
+
+        if show_free_only:
+            filtered_models = get_free_models(filtered_models)
+
+        if filter_text:
+            filter_lower = filter_text.lower()
+            filtered_models = [
+                m for m in filtered_models
+                if filter_lower in m.get("id", "").lower() or filter_lower in m.get("name", "").lower()
+            ]
+
+        if not filtered_models:
+            console.print(f"[yellow]No models found matching '{filter_text}'[/yellow]")
+            return
+
         # Header
+        filter_desc = f" ({filter_text})" if filter_text else ""
+        free_desc = " (FREE ONLY)" if show_free_only else ""
         header_panel = Panel(
-            f"[bold bright_cyan]12+ AI Models Available[/bold bright_cyan]\n"
-            f"{ascii_art.LIGHTNING} Switch between models anytime with /model <name>",
-            title=f"[bold magenta]{ascii_art.BRAIN} Available Models[/bold magenta]",
+            f"[bold bright_cyan]{len(filtered_models)} Models Available{filter_desc}{free_desc}[/bold bright_cyan]\n"
+            f"{ascii_art.LIGHTNING} Switch with: /model <model-id>",
+            title=f"[bold magenta]{ascii_art.BRAIN} OpenRouter Models[/bold magenta]",
             border_style="bright_magenta",
             padding=(0, 2)
         )
         console.print(header_panel)
         console.print()
 
-        # Create table with modern styling
+        # Create table
         table = Table(show_header=True, header_style="bold magenta", border_style="bright_blue")
-        table.add_column("Key", style="bright_cyan", no_wrap=True)
-        table.add_column("Model Name", style="white")
-        table.add_column("Speed", justify="center", style="bright_yellow")
-        table.add_column("Cost", justify="center", style="bright_green")
+        table.add_column("Model ID", style="bright_cyan", no_wrap=False, max_width=50)
+        table.add_column("Name", style="white", max_width=30)
         table.add_column("Context", justify="right", style="bright_blue")
-        table.add_column("Best For", style="white")
+        table.add_column("Cost", justify="center", style="bright_green")
         table.add_column("Active", justify="center", style="bright_green")
 
-        for key, model in AVAILABLE_MODELS.items():
-            # Filter by category if specified
-            if category:
-                if category.lower() not in model["name"].lower():
-                    continue
+        # Show first 50 models
+        for model in filtered_models[:50]:
+            model_id = model.get("id", "Unknown")
+            name = model.get("name", "Unknown")
+            context = model.get("context_length", 0)
+            pricing = model.get("pricing", {})
 
-            is_current = f"[bright_green]{ascii_art.CHECK}[/bright_green]" if key == self.current_model_key else ""
+            is_current = f"[bright_green]{ascii_art.CHECK}[/bright_green]" if model_id == self.current_model_id else ""
+
             table.add_row(
-                key,
-                model["name"],
-                model["speed"],
-                model["cost"],
-                model["context"],
-                model["best_for"],
+                model_id,
+                name,
+                format_context(context),
+                format_cost(pricing),
                 is_current
             )
 
         console.print(table)
 
-        # Footer with usage info
+        if len(filtered_models) > 50:
+            console.print(f"\n[dim]Showing 50 of {len(filtered_models)} models. Use filters to narrow down.[/dim]")
+
+        # Footer
         current_model_name = self.get_current_model_name()
         console.print()
         footer_panel = Panel(
-            f"[bold white]Usage:[/bold white] /model <key or alias>\n"
-            f"[bold white]Examples:[/bold white] /model gpt4  •  /model sonnet  •  /model gemini\n\n"
-            f"[bold bright_cyan]Current Model:[/bold bright_cyan] {current_model_name}",
+            f"[bold white]Usage:[/bold white]\n"
+            f"  /model <model-id>              Switch to a model\n"
+            f"  /model list free               Show only free models\n"
+            f"  /model list <search>           Filter models\n"
+            f"  /model back                    Return to previous model\n\n"
+            f"[bold bright_cyan]Current:[/bold bright_cyan] {current_model_name}\n"
+            f"[bold bright_cyan]ID:[/bold bright_cyan] [dim]{self.current_model_id}[/dim]",
             border_style="bright_blue",
             padding=(0, 2)
         )
         console.print(footer_panel)
 
-    def get_model_info(self, model_key: Optional[str] = None) -> Dict:
+    def get_model_info(self, model_id: Optional[str] = None) -> Dict:
         """Get detailed information about a model."""
-        if model_key is None:
-            model_key = self.current_model_key
+        if model_id is None:
+            model_id = self.current_model_id
 
-        if model_key in MODEL_ALIASES:
-            model_key = MODEL_ALIASES[model_key]
+        for model in self.models:
+            if model.get("id") == model_id:
+                # Format the model info for display
+                pricing = model.get("pricing", {})
+                context = model.get("context_length", 0)
 
-        return AVAILABLE_MODELS.get(model_key, self.get_current_model())
+                return {
+                    "id": model.get("id", "Unknown"),
+                    "name": model.get("name", "Unknown"),
+                    "speed": "Fast" if "flash" in model.get("id", "").lower() else "Standard",
+                    "cost": format_cost(pricing),
+                    "context": format_context(context),
+                    "best_for": model.get("description", "General purpose tasks")[:100]
+                }
+
+        return {
+            "id": model_id,
+            "name": "Unknown",
+            "speed": "Unknown",
+            "cost": "Unknown",
+            "context": "Unknown",
+            "best_for": "Unknown"
+        }
 
     def previous_model(self) -> bool:
         """Switch back to the previous model."""
@@ -270,22 +284,9 @@ class ModelManager:
 
         previous = self.model_history.pop()
         old_model = self.get_current_model_name()
-        self.current_model_key = previous
-        console.print(f"[green]Switched back from {old_model} to {self.get_current_model_name()}[/green]")
+        self.current_model_id = previous
+        console.print(f"[green]✓ Switched back from {old_model} to {self.get_current_model_name()}[/green]")
         return True
-
-    def get_recommended_model(self, task_type: str) -> str:
-        """Recommend a model based on task type."""
-        recommendations = {
-            "code": "deepseek-coder",
-            "fast": "gemini-flash",
-            "quality": "claude-3-opus",
-            "long": "gemini-flash",
-            "cheap": "gemini-flash",
-            "reasoning": "claude-3-opus"
-        }
-
-        return recommendations.get(task_type.lower(), "gemini-flash")
 
 
 # Global model manager instance
@@ -300,7 +301,7 @@ def get_model_manager() -> ModelManager:
     return _model_manager
 
 
-def initialize_model_manager(default_model: str = "gemini-flash"):
+def initialize_model_manager(default_model: str = "google/gemini-2.0-flash-exp:free"):
     """Initialize the model manager with a default model."""
     global _model_manager
     _model_manager = ModelManager(default_model)

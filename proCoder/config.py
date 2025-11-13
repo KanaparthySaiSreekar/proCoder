@@ -36,7 +36,7 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # --- Optional ---
 # Default to a capable free model on OpenRouter if not set
-MODEL_NAME = os.getenv("AI_MODEL_NAME", "google/gemini-flash-1.5-8b")
+MODEL_NAME = os.getenv("AI_MODEL_NAME", "google/gemini-2.0-flash-exp:free")
 SITE_URL = os.getenv("YOUR_SITE_URL") # Optional header
 SITE_NAME = os.getenv("YOUR_SITE_NAME") # Optional header
 
