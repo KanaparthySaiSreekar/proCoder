@@ -15,18 +15,20 @@ import os
 from dotenv import load_dotenv
 import warnings
 import os # Make sure os is imported
+from pathlib import Path
 
-# Attempt to load .env file. load_dotenv handles finding it.
-# Returns True if a .env file was found and loaded, False otherwise.
-found_dotenv = load_dotenv()
+# Attempt to load .env file from multiple locations
+# 1. First check global config directory (~/.procoder/.env)
+global_env = Path.home() / ".procoder" / ".env"
+found_global = False
+if global_env.exists():
+    found_global = load_dotenv(dotenv_path=global_env)
 
-# Don't show warning during import - we'll handle it gracefully in commands
-# if not found_dotenv:
-#     warnings.warn(
-#         ".env file not found in current directory or parent directories. "
-#         "Loading environment variables from OS environment.",
-#         stacklevel=2
-#     )
+# 2. Then check current directory and parent directories (project-specific)
+found_local = load_dotenv()
+
+# Use whichever was found (global takes precedence if both exist)
+found_dotenv = found_global or found_local
 
 # --- Required ---
 # Don't raise error here - let individual commands check and provide helpful messages
