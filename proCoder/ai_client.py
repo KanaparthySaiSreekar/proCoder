@@ -10,11 +10,20 @@ from rich.console import Console
 
 console = Console()
 
-# Initialize the client once
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=config.API_KEY,
-)
+# Global client instance (lazy initialization)
+_client = None
+
+def get_client():
+    """Get or create the OpenAI client instance."""
+    global _client
+    if _client is None:
+        if not config.API_KEY:
+            raise ValueError("API key not configured. Run 'proCoder setup' first.")
+        _client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=config.API_KEY,
+        )
+    return _client
 
 # Prepare optional headers
 extra_headers = {}
@@ -106,7 +115,7 @@ def stream_ai_response(prompt_history: list[dict], model_name: str):
 
     for attempt in range(retry_attempts):
         try:
-            stream = client.chat.completions.create(
+            stream = get_client().chat.completions.create(
                 model=model_name,
                 messages=prompt_history,
                 stream=True,
