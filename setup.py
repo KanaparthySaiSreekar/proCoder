@@ -33,14 +33,19 @@ if os.path.exists("README.md"):
 setup(
     name='proCoder-ai', # Package name on PyPI
     version='0.4.0',   # Added multi-model switching, persistent memory, OpenRouter integration
-    author='Your Name / Your Org', # Change this
-    author_email='your.email@example.com', # Change this
-    description='An AI coding assistant for your terminal powered by OpenRouter.',
+    author='Kanaparthy Sai Sreekar',
+    author_email='kanapasai@gmail.com',
+    description='Professional AI coding assistant for your terminal - multi-model switching, persistent memory, and OpenRouter integration',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/yourusername/proCoder-project', # Change this
-    license='MIT', # Or choose another license
-    packages=find_packages(), # Finds the 'proCoder' package automatically
+    url='https://github.com/KanaparthySaiSreekar/proCoder',
+    project_urls={
+        'Bug Tracker': 'https://github.com/KanaparthySaiSreekar/proCoder/issues',
+        'Documentation': 'https://github.com/KanaparthySaiSreekar/proCoder#readme',
+        'Source Code': 'https://github.com/KanaparthySaiSreekar/proCoder',
+    },
+    license='MIT',
+    packages=find_packages(exclude=['tests', 'tests.*']), # Finds the 'proCoder' package automatically
     include_package_data=True, # Include non-code files listed in MANIFEST.in (if any)
     install_requires=INSTALL_REQUIRES,
     entry_points={
@@ -50,9 +55,9 @@ setup(
         ],
     },
     classifiers=[
-        'Development Status :: 3 - Alpha', # Change as appropriate
+        'Development Status :: 4 - Beta', # v0.4.0 is stable beta
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License', # Match license above
+        'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
@@ -61,9 +66,16 @@ setup(
         'Programming Language :: Python :: 3.12',
         'Environment :: Console',
         'Operating System :: OS Independent',
+        'Operating System :: POSIX :: Linux',
+        'Operating System :: MacOS',
+        'Operating System :: Microsoft :: Windows',
         'Topic :: Software Development',
+        'Topic :: Software Development :: Code Generators',
+        'Topic :: Software Development :: Quality Assurance',
         'Topic :: Terminals',
         'Topic :: Utilities',
+        'Natural Language :: English',
     ],
-    python_requires='>=3.8', # Set minimum Python version
+    keywords='ai coding assistant cli terminal openrouter anthropic claude gpt code-editor developer-tools',
+    python_requires='>=3.8',
 )

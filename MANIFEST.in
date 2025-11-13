@@ -1,0 +1,34 @@
+# Include documentation
+include README.md
+include LICENSE
+include .env.example
+
+# Include install scripts
+include install.sh
+include install.ps1
+
+# Include requirements
+include requirements.txt
+
+# Exclude development files
+exclude .gitignore
+exclude .git*
+exclude *.pyc
+exclude *.pyo
+exclude __pycache__
+
+# Exclude test files
+recursive-exclude tests *
+recursive-exclude .github *
+
+# Exclude editor/IDE files
+recursive-exclude .vscode *
+recursive-exclude .idea *
+exclude *.swp
+exclude *.swo
+exclude *~
+
+# Exclude build artifacts
+recursive-exclude dist *
+recursive-exclude build *
+recursive-exclude *.egg-info *
