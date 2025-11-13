@@ -334,13 +334,9 @@ def callback(ctx: typer.Context):
         console.print("[dim]Not inside a Git repository.[/dim]")
 
     # Initialize model manager
-    default_model_key = "gemini-flash"
-    # Try to map config.MODEL_NAME to a model key
-    for key, model_info in model_manager.AVAILABLE_MODELS.items():
-        if config.MODEL_NAME and config.MODEL_NAME.lower() in model_info["id"].lower():
-            default_model_key = key
-            break
-    model_mgr = model_manager.initialize_model_manager(default_model_key)
+    # Use MODEL_NAME from config if set, otherwise use default
+    default_model = config.MODEL_NAME if config.MODEL_NAME else "google/gemini-2.0-flash-exp:free"
+    model_mgr = model_manager.initialize_model_manager(default_model)
 
     # Initialize memory system
     memory = memory_system.initialize_memory_system(git_repo_root)
