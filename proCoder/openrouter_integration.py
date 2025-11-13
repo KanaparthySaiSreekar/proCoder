@@ -303,7 +303,7 @@ def setup_wizard() -> Optional[str]:
     # Step 3 - Save configuration
     step3_panel = Panel(
         "[bold white]Saving configuration[/bold white]\n\n"
-        f"{ascii_art.BULLET} Saving API key to .env file\n"
+        f"{ascii_art.BULLET} Saving API key to global config\n"
         f"{ascii_art.BULLET} Configuring proCoder for first use",
         title="[bold bright_blue]Step 3 of 3[/bold bright_blue]",
         border_style="bright_blue",
@@ -312,8 +312,13 @@ def setup_wizard() -> Optional[str]:
     console.print(step3_panel)
     console.print()
 
-    env_path = Path.cwd() / ".env"
-    env_example_path = Path.cwd() / ".env.example"
+    # Save to global config directory (~/.procoder/.env)
+    config_dir = Path.home() / ".procoder"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    env_path = config_dir / ".env"
+
+    # Also check for .env.example in the package
+    env_example_path = Path(__file__).parent / ".env.example"
 
     # Create .env from .env.example if it doesn't exist
     if not env_path.exists() and env_example_path.exists():
@@ -417,8 +422,11 @@ def quick_login() -> Optional[str]:
     if client.validate_api_key():
         console.print("[green]✓ Successfully authenticated![/green]")
 
-        # Save to .env
-        env_path = Path.cwd() / ".env"
+        # Save to global config directory (~/.procoder/.env)
+        config_dir = Path.home() / ".procoder"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        env_path = config_dir / ".env"
+
         try:
             env_content = {}
             if env_path.exists():
