@@ -6,6 +6,16 @@
 
 **proCoder** is a production-ready AI coding assistant that runs directly in your terminal. Powered by models accessible via [OpenRouter.ai](https://openrouter.ai/), it provides advanced features like file editing, code search, undo/redo, and intelligent context management.
 
+## 🚀 One-Line Install
+
+**macOS/Linux:** `curl -fsSL https://raw.githubusercontent.com/KanaparthySaiSreekar/proCoder/main/install.sh | bash`
+
+**Windows:** `irm https://raw.githubusercontent.com/KanaparthySaiSreekar/proCoder/main/install.ps1 | iex`
+
+**pipx:** `pipx install git+https://github.com/KanaparthySaiSreekar/proCoder.git`
+
+Then run: `proCoder setup` → `proCoder main` 🎉
+
 **What makes proCoder special?**
 - 🎯 **Professional-grade file operations** - Create, modify, and track all changes with full undo/redo
 - 🔍 **Built-in code search** - Find anything in your codebase without leaving the chat
@@ -30,26 +40,46 @@
 
 ## Quick Start
 
+### One-Line Install (Recommended)
+
+**macOS / Linux:**
 ```bash
-# 1. Clone and setup
+curl -fsSL https://raw.githubusercontent.com/KanaparthySaiSreekar/proCoder/main/install.sh | bash
+```
+
+**Windows PowerShell:**
+```powershell
+irm https://raw.githubusercontent.com/KanaparthySaiSreekar/proCoder/main/install.ps1 | iex
+```
+
+**Using pipx (Cross-platform):**
+```bash
+pipx install git+https://github.com/KanaparthySaiSreekar/proCoder.git
+```
+
+**Using pip (Cross-platform):**
+```bash
+pip install --user git+https://github.com/KanaparthySaiSreekar/proCoder.git
+```
+
+### First Run
+
+After installation, just run:
+```bash
+proCoder setup    # Interactive setup wizard (< 2 minutes)
+proCoder main     # Start coding!
+```
+
+### Manual Installation
+
+If you prefer to install from source:
+```bash
 git clone https://github.com/KanaparthySaiSreekar/proCoder.git
 cd proCoder
 python3 -m venv venv
 source venv/bin/activate  # On Windows: .\venv\Scripts\activate
-
-# 2. Install
 pip install -e .
-
-# 3. Interactive Setup (opens browser, validates key, saves config)
 proCoder setup
-
-# 4. Start coding!
-proCoder main path/to/your/code.py
-```
-
-**Alternative:** If you already have an OpenRouter API key, you can use quick login:
-```bash
-proCoder login  # Enter your existing API key
 ```
 
 ## Features
@@ -115,46 +145,81 @@ proCoder login  # Enter your existing API key
 
 ## Installation
 
-**Prerequisites:**
+**TL;DR:** See [Quick Start](#quick-start) for one-line install commands.
 
-*   [Python](https://www.python.org/downloads/) 3.8+
-*   [Git](https://git-scm.com/downloads/)
-*   An [OpenRouter.ai](https://openrouter.ai/) account and API Key.
+### Prerequisites
 
-**Steps:**
+*   [Python](https://www.python.org/downloads/) 3.8 or higher
+*   An [OpenRouter.ai](https://openrouter.ai/) account (free tier available)
 
-1.  **Clone the Repository:**
-    ```bash
-    git clone https://github.com/[your-username]/proCoder-project.git
-    cd proCoder-project
-    ```
+### Installation Methods
 
-2.  **Create and Activate Virtual Environment:**
-    *   **Linux/macOS:**
-        ```bash
-        python3 -m venv venv
-        source venv/bin/activate
-        ```
-    *   **Windows (Command Prompt/PowerShell):**
-        ```bash
-        python -m venv venv
-        .\venv\Scripts\activate
-        ```
+#### 1. Automated Install Scripts (Recommended)
 
-3.  **Install Dependencies:**
-    This command uses `setup.py` to install the project and its requirements in editable mode (`-e`), meaning changes you make to the source code will be reflected immediately when you run the tool.
-    ```bash
-    pip install -e .
-    ```
-    *(Ensure you are in the `proCoder-project` root directory containing `setup.py` when running this.)*
+The easiest way to install proCoder - handles everything automatically:
 
-4.  **Configure API Key:**
-    *   Rename the example environment file:
-        *   Linux/macOS: `cp .env.example .env`
-        *   Windows: `copy .env.example .env`
-    *   Open the `.env` file in a text editor.
-    *   Paste your OpenRouter API key: `OPENROUTER_API_KEY="sk-or-v1-..."`
-    *   (Optional) Customize `AI_MODEL_NAME` (check [OpenRouter Models](https://openrouter.ai/models) for options), `GIT_AUTO_STAGE`, `GIT_AUTO_COMMIT`, `YOUR_SITE_URL`, `YOUR_SITE_NAME`.
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/KanaparthySaiSreekar/proCoder/main/install.sh | bash
+```
+
+**Windows PowerShell:**
+```powershell
+irm https://raw.githubusercontent.com/KanaparthySaiSreekar/proCoder/main/install.ps1 | iex
+```
+
+#### 2. Using pipx (Isolated Environment)
+
+[pipx](https://pipx.pypa.io/) installs CLI tools in isolated environments - best practice for Python CLI apps:
+
+```bash
+# Install pipx if you don't have it
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+
+# Install proCoder
+pipx install git+https://github.com/KanaparthySaiSreekar/proCoder.git
+```
+
+#### 3. Using pip (User Install)
+
+Direct installation with pip:
+
+```bash
+pip install --user git+https://github.com/KanaparthySaiSreekar/proCoder.git
+```
+
+**Note:** Make sure `~/.local/bin` (Linux/macOS) or `%APPDATA%\Python\Scripts` (Windows) is in your PATH.
+
+#### 4. From Source (Development)
+
+For contributing or local development:
+
+```bash
+git clone https://github.com/KanaparthySaiSreekar/proCoder.git
+cd proCoder
+python3 -m venv venv
+source venv/bin/activate  # Windows: .\venv\Scripts\activate
+pip install -e .
+```
+
+### Post-Installation
+
+After installation, run the setup wizard:
+```bash
+proCoder setup
+```
+
+This will:
+1. Open your browser to OpenRouter.ai
+2. Guide you through API key creation
+3. Validate and save your configuration
+4. Show your account dashboard
+
+Then start coding:
+```bash
+proCoder main [your-files...]
+```
 
 ## Usage
 

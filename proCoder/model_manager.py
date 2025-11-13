@@ -4,6 +4,9 @@ Model management for switching between different AI models dynamically.
 from typing import Dict, List, Optional
 from rich.console import Console
 from rich.table import Table
+from rich.panel import Panel
+
+from . import ascii_art
 
 console = Console()
 
@@ -197,14 +200,26 @@ class ModelManager:
 
     def list_models(self, category: Optional[str] = None):
         """Display available models in a formatted table."""
-        table = Table(title="Available AI Models")
-        table.add_column("Key", style="cyan")
-        table.add_column("Name", style="magenta")
-        table.add_column("Speed", justify="center")
-        table.add_column("Cost", justify="center")
-        table.add_column("Context", justify="right")
-        table.add_column("Best For")
-        table.add_column("Current", justify="center")
+        # Header
+        header_panel = Panel(
+            f"[bold bright_cyan]12+ AI Models Available[/bold bright_cyan]\n"
+            f"{ascii_art.LIGHTNING} Switch between models anytime with /model <name>",
+            title=f"[bold magenta]{ascii_art.BRAIN} Available Models[/bold magenta]",
+            border_style="bright_magenta",
+            padding=(0, 2)
+        )
+        console.print(header_panel)
+        console.print()
+
+        # Create table with modern styling
+        table = Table(show_header=True, header_style="bold magenta", border_style="bright_blue")
+        table.add_column("Key", style="bright_cyan", no_wrap=True)
+        table.add_column("Model Name", style="white")
+        table.add_column("Speed", justify="center", style="bright_yellow")
+        table.add_column("Cost", justify="center", style="bright_green")
+        table.add_column("Context", justify="right", style="bright_blue")
+        table.add_column("Best For", style="white")
+        table.add_column("Active", justify="center", style="bright_green")
 
         for key, model in AVAILABLE_MODELS.items():
             # Filter by category if specified
@@ -212,7 +227,7 @@ class ModelManager:
                 if category.lower() not in model["name"].lower():
                     continue
 
-            is_current = "✓" if key == self.current_model_key else ""
+            is_current = f"[bright_green]{ascii_art.CHECK}[/bright_green]" if key == self.current_model_key else ""
             table.add_row(
                 key,
                 model["name"],
@@ -224,8 +239,18 @@ class ModelManager:
             )
 
         console.print(table)
-        console.print("\n[dim]Usage: /model <key or alias>[/dim]")
-        console.print(f"[dim]Current model: {self.get_current_model_name()}[/dim]")
+
+        # Footer with usage info
+        current_model_name = self.get_current_model_name()
+        console.print()
+        footer_panel = Panel(
+            f"[bold white]Usage:[/bold white] /model <key or alias>\n"
+            f"[bold white]Examples:[/bold white] /model gpt4  •  /model sonnet  •  /model gemini\n\n"
+            f"[bold bright_cyan]Current Model:[/bold bright_cyan] {current_model_name}",
+            border_style="bright_blue",
+            padding=(0, 2)
+        )
+        console.print(footer_panel)
 
     def get_model_info(self, model_key: Optional[str] = None) -> Dict:
         """Get detailed information about a model."""
