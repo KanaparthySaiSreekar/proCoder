@@ -567,15 +567,32 @@ def main(
                      console.print(f"  {i+1}. {relative_path} ({abs_path})")
             continue # Skip AI processing
         elif command.startswith("/model"):
-            parts = user_input.split(maxsplit=1)
-            if len(parts) == 1 or parts[1] == "list":
-                # Show available models
-                model_mgr.list_models()
+            parts = user_input.split(maxsplit=2)
+            if len(parts) == 1:
+                # No subcommand - show current model info
+                info = model_mgr.get_model_info()
+                console.print(f"\n[bold cyan]Current Model: {info['name']}[/bold cyan]")
+                console.print(f"  ID: {info['id']}")
+                console.print(f"  Speed: {info['speed']}")
+                console.print(f"  Cost: {info['cost']}")
+                console.print(f"  Context Window: {info['context']}")
+                console.print(f"  Best For: {info['best_for']}")
+            elif parts[1] == "list":
+                # Handle list subcommands
+                if len(parts) == 2:
+                    # Just "/model list" - show all models
+                    model_mgr.list_models()
+                elif parts[2] == "free":
+                    # "/model list free" - show only free models
+                    model_mgr.list_models(show_free_only=True)
+                else:
+                    # "/model list <search>" - filter by search term
+                    model_mgr.list_models(filter_text=parts[2])
             elif parts[1] == "back":
                 # Switch to previous model
                 model_mgr.previous_model()
             elif parts[1] == "info":
-                # Show current model info
+                # Show current model info (same as no subcommand)
                 info = model_mgr.get_model_info()
                 console.print(f"\n[bold cyan]Current Model: {info['name']}[/bold cyan]")
                 console.print(f"  ID: {info['id']}")
@@ -584,7 +601,7 @@ def main(
                 console.print(f"  Context Window: {info['context']}")
                 console.print(f"  Best For: {info['best_for']}")
             else:
-                # Try to switch to specified model
+                # Try to switch to specified model by full ID or partial name
                 model_mgr.switch_model(parts[1])
             continue
         elif command.startswith("/remember"):

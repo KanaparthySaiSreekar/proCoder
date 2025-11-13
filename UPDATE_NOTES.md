@@ -24,7 +24,44 @@ This update transforms proCoder into a feature-rich CLI coding assistant inspire
 - `get_commit_log()` - Get recent commit history
 - `get_diff_stats()` - Get diff statistics between refs
 
-### 2. Session Management (`session_manager.py`)
+### 2. Real-Time Model Management (`model_manager.py`)
+
+**Dynamic Model Fetching:**
+- Fetch live model list from OpenRouter API
+- 1-hour intelligent caching to reduce API calls
+- Support for 100+ AI models from multiple providers
+- Automatic model availability updates
+
+**Model Features:**
+- `fetch_models_from_openrouter()` - Fetch models with caching
+- `get_free_models()` - Filter free models only
+- `format_cost()` - Display cost ratings (FREE, $, $$, $$$, $$$$)
+- `format_context()` - Format context window (8K, 128K, 1M)
+- `switch_model()` - Switch by full ID or partial name matching
+- `list_models()` - Display models with filtering
+- `get_model_info()` - Get detailed model information
+- `previous_model()` - Return to previous model
+
+**Filtering & Search:**
+- `/model list` - Show all available models (up to 50)
+- `/model list free` - Show only free models
+- `/model list gemini` - Filter by search term
+- `/model <model-id>` - Switch to specific model
+- Partial name matching (e.g., "gemini" matches all Gemini models)
+
+**Display Information:**
+- Model ID and name
+- Context window size
+- Cost indicators
+- Active model marking
+- Provider information
+
+**Default Model:**
+- Updated to `google/gemini-2.0-flash-exp:free`
+- Always reflects latest OpenRouter offerings
+- No more outdated hardcoded model lists
+
+### 3. Session Management (`session_manager.py`)
 
 **Resume Conversations:**
 - Store complete conversation transcripts in JSON format
@@ -49,7 +86,7 @@ This update transforms proCoder into a feature-rich CLI coding assistant inspire
 - File changes tracking
 - Custom metadata
 
-### 3. Approval Modes (`approval_modes.py`)
+### 4. Approval Modes (`approval_modes.py`)
 
 **Three Permission Levels:**
 
@@ -80,7 +117,7 @@ This update transforms proCoder into a feature-rich CLI coding assistant inspire
 - `request_permission()` - Interactive permission prompts
 - `display_modes_table()` - Show mode comparison
 
-### 4. Code Review (`code_review.py`)
+### 5. Code Review (`code_review.py`)
 
 **Review Types:**
 
@@ -112,7 +149,7 @@ This update transforms proCoder into a feature-rich CLI coding assistant inspire
 - Focus on: bugs, security, performance, best practices
 - Custom focus areas (e.g., "focus on security")
 
-### 5. Web Search (`web_search.py`)
+### 6. Web Search (`web_search.py`)
 
 **Search Capabilities:**
 - DuckDuckGo web search (no API key required)
@@ -131,7 +168,7 @@ This update transforms proCoder into a feature-rich CLI coding assistant inspire
 - Enable via `WEB_SEARCH_ENABLED=true` in .env
 - Respects network permissions from approval mode
 
-### 6. Shell Completions
+### 7. Shell Completions
 
 **Support for Multiple Shells:**
 - Bash (`completions/proCoder.bash`)
@@ -156,7 +193,7 @@ cp completions/proCoder.fish ~/.config/fish/completions/
 - File path completion
 - Provider name completion for models
 
-### 7. Extensible Slash Commands (`slash_commands.py`)
+### 8. Extensible Slash Commands (`slash_commands.py`)
 
 **Custom Command System:**
 - Create custom commands as markdown/text files
@@ -180,7 +217,7 @@ Your custom prompt content here...
 Can include variables, examples, etc.
 ```
 
-### 8. File Picker (`file_picker.py`)
+### 9. File Picker (`file_picker.py`)
 
 **Fuzzy File Search:**
 - @ mention syntax for file references
@@ -202,7 +239,7 @@ Can include variables, examples, etc.
 @README           → Find README.md
 ```
 
-### 9. Image Input Support (`ai_client.py`)
+### 10. Image Input Support (`ai_client.py`)
 
 **Multimodal AI Support:**
 - Attach images to messages
