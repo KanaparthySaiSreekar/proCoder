@@ -319,6 +319,10 @@ def callback(ctx: typer.Context):
     """
     proCoder: AI assistant for code editing. Manages session state.
     """
+    # Skip initialization for setup/login commands (they don't need API key)
+    if ctx.invoked_subcommand in ['setup', 'login']:
+        return
+
     global git_repo_root, model_mgr, memory, session_mgr, approval_mgr
     global code_reviewer, web_searcher, slash_cmd_mgr, file_picker_mgr
 
@@ -333,7 +337,7 @@ def callback(ctx: typer.Context):
     default_model_key = "gemini-flash"
     # Try to map config.MODEL_NAME to a model key
     for key, model_info in model_manager.AVAILABLE_MODELS.items():
-        if config.MODEL_NAME.lower() in model_info["id"].lower():
+        if config.MODEL_NAME and config.MODEL_NAME.lower() in model_info["id"].lower():
             default_model_key = key
             break
     model_mgr = model_manager.initialize_model_manager(default_model_key)
@@ -378,6 +382,10 @@ def main(
 
     Load initial files by providing their paths as arguments.
     """
+    # Check if API key is configured
+    if not config.require_api_key():
+        return
+
     global loaded_files
     global git_repo_root
 
@@ -829,11 +837,12 @@ def models(
     Browse all available models on OpenRouter.
     Displays models with pricing, context limits, and descriptions.
     """
+    # Check if API key is configured
+    if not config.require_api_key():
+        return
+
     try:
-        from dotenv import load_dotenv
-        load_dotenv()
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        client = openrouter_integration.OpenRouterClient(api_key)
+        client = openrouter_integration.OpenRouterClient(config.API_KEY)
         client.display_model_browser(category)
     except Exception as e:
         console.print(f"[red]Error browsing models:[/red] {e}")
@@ -845,16 +854,12 @@ def account():
     View your OpenRouter account information.
     Shows usage statistics, credits, and rate limits.
     """
+    # Check if API key is configured
+    if not config.require_api_key():
+        return
+
     try:
-        from dotenv import load_dotenv
-        load_dotenv()
-        api_key = os.getenv("OPENROUTER_API_KEY")
-
-        if not api_key:
-            console.print("[yellow]No API key found. Run 'proCoder setup' first.[/yellow]")
-            return
-
-        client = openrouter_integration.OpenRouterClient(api_key)
+        client = openrouter_integration.OpenRouterClient(config.API_KEY)
         client.display_account_dashboard()
     except Exception as e:
         console.print(f"[red]Error fetching account info:[/red] {e}")

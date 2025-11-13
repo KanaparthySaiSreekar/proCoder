@@ -20,24 +20,17 @@ import os # Make sure os is imported
 # Returns True if a .env file was found and loaded, False otherwise.
 found_dotenv = load_dotenv()
 
-if not found_dotenv:
-    warnings.warn(
-        ".env file not found in current directory or parent directories. "
-        "Loading environment variables from OS environment.",
-        stacklevel=2
-    )
-    # Note: load_dotenv() already attempted to load from the environment if .env wasn't found,
-    # so we don't strictly need to call it again here.
-
-# (Rest of your config.py continues below, like API_KEY = os.getenv(...))
+# Don't show warning during import - we'll handle it gracefully in commands
+# if not found_dotenv:
+#     warnings.warn(
+#         ".env file not found in current directory or parent directories. "
+#         "Loading environment variables from OS environment.",
+#         stacklevel=2
+#     )
 
 # --- Required ---
+# Don't raise error here - let individual commands check and provide helpful messages
 API_KEY = os.getenv("OPENROUTER_API_KEY")
-if not API_KEY:
-    raise ValueError(
-        "OPENROUTER_API_KEY not found in environment variables or .env file. "
-        "Get one from https://openrouter.ai/keys"
-    )
 
 # --- Optional ---
 # Default to a capable free model on OpenRouter if not set
@@ -87,12 +80,52 @@ def find_dotenv(filename='.env', raise_error_if_not_found=False, usecwd=True):
     return None # Return None if not found instead of raising error by default
 
 
-# --- Print loaded config for verification ---
-print("--- proCoder Configuration ---")
-print(f"Model: {MODEL_NAME}")
-print(f"API Key Loaded: {'Yes' if API_KEY else 'NO (ERROR!)'}")
-if SITE_URL: print(f"Site URL Header: {SITE_URL}")
-if SITE_NAME: print(f"Site Name Header: {SITE_NAME}")
-print(f"Auto Stage: {GIT_AUTO_STAGE}")
-print(f"Auto Commit: {GIT_AUTO_COMMIT}")
-print("-----------------------------")
+# --- Helper Functions ---
+def is_configured() -> bool:
+    """Check if API key is configured."""
+    return API_KEY is not None and len(API_KEY.strip()) > 0
+
+
+def require_api_key():
+    """
+    Check if API key is configured, and provide helpful message if not.
+    Returns True if configured, False otherwise.
+    """
+    if not is_configured():
+        from rich.console import Console
+        from rich.panel import Panel
+        console = Console()
+
+        console.print()
+        console.print(Panel(
+            "[bold yellow]⚠️  API Key Not Configured[/bold yellow]\n\n"
+            "[cyan]proCoder needs an OpenRouter API key to function.[/cyan]\n\n"
+            "[bold]Quick Setup:[/bold]\n"
+            "  1. Run: [green]proCoder setup[/green]\n"
+            "  2. Follow the interactive wizard (< 2 minutes)\n\n"
+            "[bold]Or manually:[/bold]\n"
+            "  1. Get a key from: [blue]https://openrouter.ai/keys[/blue]\n"
+            "  2. Create a [yellow].env[/yellow] file with:\n"
+            "     [dim]OPENROUTER_API_KEY=your_key_here[/dim]\n\n"
+            "[dim]OpenRouter provides access to 100+ AI models including Claude, GPT-4, and Gemini.[/dim]",
+            title="🔑 Configuration Required",
+            border_style="yellow",
+            padding=(1, 2)
+        ))
+        console.print()
+        return False
+    return True
+
+
+# --- Print loaded config for verification (only if configured) ---
+def print_config():
+    """Print configuration status (only called when running commands)."""
+    if is_configured():
+        print("--- proCoder Configuration ---")
+        print(f"Model: {MODEL_NAME}")
+        print(f"API Key: Configured ✓")
+        if SITE_URL: print(f"Site URL: {SITE_URL}")
+        if SITE_NAME: print(f"Site Name: {SITE_NAME}")
+        print(f"Auto Stage: {GIT_AUTO_STAGE}")
+        print(f"Auto Commit: {GIT_AUTO_COMMIT}")
+        print("-----------------------------")
