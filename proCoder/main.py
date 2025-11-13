@@ -34,6 +34,12 @@ from . import model_manager
 from . import memory_system
 from . import openrouter_integration
 from . import ascii_art
+from . import session_manager
+from . import approval_modes
+from . import code_review
+from . import web_search
+from . import slash_commands
+from . import file_picker
 
 # --- Setup ---
 app = typer.Typer(help="proCoder: AI assistant for code editing in your terminal.")
@@ -48,6 +54,18 @@ git_repo_root: Optional[str] = None # Store root path if detected
 model_mgr: Optional[model_manager.ModelManager] = None
 # Memory system for persistent context
 memory: Optional[memory_system.MemorySystem] = None
+# Session manager for resume functionality
+session_mgr: Optional[session_manager.SessionManager] = None
+# Approval manager for permission control
+approval_mgr: Optional[approval_modes.ApprovalManager] = None
+# Code reviewer for diff/commit review
+code_reviewer: Optional[code_review.CodeReviewer] = None
+# Web searcher for web search capability
+web_searcher: Optional[web_search.WebSearcher] = None
+# Slash command manager
+slash_cmd_mgr: Optional[slash_commands.SlashCommandManager] = None
+# File picker for fuzzy file search
+file_picker_mgr: Optional[file_picker.FilePicker] = None
 
 # --- Helper Functions ---
 
@@ -301,7 +319,9 @@ def callback(ctx: typer.Context):
     """
     proCoder: AI assistant for code editing. Manages session state.
     """
-    global git_repo_root, model_mgr, memory
+    global git_repo_root, model_mgr, memory, session_mgr, approval_mgr
+    global code_reviewer, web_searcher, slash_cmd_mgr, file_picker_mgr
+
     # Detect Git repo based on CWD *before* processing files
     git_repo_root = git_utils.get_repo_root()
     if git_repo_root:
@@ -320,6 +340,30 @@ def callback(ctx: typer.Context):
 
     # Initialize memory system
     memory = memory_system.initialize_memory_system(git_repo_root)
+
+    # Initialize session manager
+    session_mgr = session_manager.SessionManager()
+
+    # Initialize approval manager
+    working_dir = git_repo_root if git_repo_root else os.getcwd()
+    approval_mgr = approval_modes.ApprovalManager(
+        initial_mode=approval_modes.ApprovalMode.AUTO,
+        working_dir=working_dir
+    )
+
+    # Initialize code reviewer (if in git repo)
+    if git_repo_root:
+        code_reviewer = code_review.CodeReviewer(git_repo_root)
+
+    # Initialize web searcher (disabled by default)
+    web_enabled = config.get_bool_env("WEB_SEARCH_ENABLED", False)
+    web_searcher = web_search.WebSearcher(enabled=web_enabled)
+
+    # Initialize slash commands manager
+    slash_cmd_mgr = slash_commands.SlashCommandManager()
+
+    # Initialize file picker
+    file_picker_mgr = file_picker.FilePicker(working_dir, git_repo_root)
 
 
 @app.command()
@@ -344,7 +388,7 @@ def main(
     # Create gradient logo
     logo_text = Text(ascii_art.LOGO, style="bold cyan")
     tagline = Text("AI-Powered Coding Assistant", style="italic bright_magenta")
-    version = Text(f"v0.4.0  {ascii_art.LIGHTNING} Multi-Model  {ascii_art.BRAIN} Smart Memory  {ascii_art.ROCKET} Easy Setup", style="dim cyan")
+    version = Text(f"v0.5.0  {ascii_art.LIGHTNING} Session Resume  {ascii_art.BRAIN} Code Review  {ascii_art.ROCKET} Git Workflow", style="dim cyan")
 
     console.print()
     console.print(Align.center(logo_text))

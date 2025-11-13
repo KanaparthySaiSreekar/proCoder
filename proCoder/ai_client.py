@@ -1,4 +1,8 @@
 import time
+import base64
+import mimetypes
+from pathlib import Path
+from typing import List, Optional, Dict, Any
 from openai import OpenAI, APIError, RateLimitError, AuthenticationError, BadRequestError
 from . import config
 from . import token_counter
@@ -143,3 +147,142 @@ def stream_ai_response(prompt_history: list[dict], model_name: str):
     # If all retries fail
     console.print("[bold red]API call failed after multiple retries.[/bold red]")
     raise APIError("API call failed after multiple retries.") # Raise generic API error
+
+
+def encode_image_to_base64(image_path: str) -> Optional[str]:
+    """
+    Encode an image file to base64.
+
+    Args:
+        image_path: Path to the image file
+
+    Returns:
+        Base64 encoded string or None if error
+    """
+    try:
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+    except Exception as e:
+        console.print(f"[red]Error encoding image:[/red] {e}")
+        return None
+
+
+def get_image_mime_type(image_path: str) -> str:
+    """
+    Get the MIME type of an image file.
+
+    Args:
+        image_path: Path to the image file
+
+    Returns:
+        MIME type string
+    """
+    mime_type, _ = mimetypes.guess_type(image_path)
+    return mime_type or "image/jpeg"
+
+
+def create_image_message_content(image_paths: List[str], text: str = "") -> List[Dict[str, Any]]:
+    """
+    Create message content with both text and images.
+
+    Args:
+        image_paths: List of paths to image files
+        text: Text content to include
+
+    Returns:
+        List of content items for multimodal message
+    """
+    content = []
+
+    # Add text if provided
+    if text:
+        content.append({
+            "type": "text",
+            "text": text
+        })
+
+    # Add each image
+    for image_path in image_paths:
+        base64_image = encode_image_to_base64(image_path)
+        if base64_image:
+            mime_type = get_image_mime_type(image_path)
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{mime_type};base64,{base64_image}"
+                }
+            })
+            console.print(f"[green]Added image:[/green] {Path(image_path).name}")
+
+    return content
+
+
+def add_images_to_message(message: Dict[str, Any], image_paths: List[str]) -> Dict[str, Any]:
+    """
+    Add images to an existing message.
+
+    Args:
+        message: Message dictionary
+        image_paths: List of image file paths
+
+    Returns:
+        Updated message with images
+    """
+    if not image_paths:
+        return message
+
+    # Convert simple string content to multimodal content
+    if isinstance(message.get("content"), str):
+        text_content = message["content"]
+        message["content"] = create_image_message_content(image_paths, text_content)
+    elif isinstance(message.get("content"), list):
+        # Already multimodal, append images
+        for image_path in image_paths:
+            base64_image = encode_image_to_base64(image_path)
+            if base64_image:
+                mime_type = get_image_mime_type(image_path)
+                message["content"].append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{mime_type};base64,{base64_image}"
+                    }
+                })
+                console.print(f"[green]Added image:[/green] {Path(image_path).name}")
+
+    return message
+
+
+def validate_images(image_paths: List[str]) -> List[str]:
+    """
+    Validate that image paths exist and are supported formats.
+
+    Args:
+        image_paths: List of image file paths
+
+    Returns:
+        List of valid image paths
+    """
+    supported_formats = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'}
+    valid_paths = []
+
+    for image_path in image_paths:
+        path = Path(image_path)
+
+        if not path.exists():
+            console.print(f"[yellow]Image not found:[/yellow] {image_path}")
+            continue
+
+        if path.suffix.lower() not in supported_formats:
+            console.print(f"[yellow]Unsupported image format:[/yellow] {image_path}")
+            console.print(f"[dim]Supported: {', '.join(supported_formats)}[/dim]")
+            continue
+
+        # Check file size (warn if > 20MB)
+        size_mb = path.stat().st_size / (1024 * 1024)
+        if size_mb > 20:
+            console.print(f"[yellow]Warning: Large image ({size_mb:.1f}MB):[/yellow] {image_path}")
+            console.print("[dim]This may increase API costs[/dim]")
+
+        valid_paths.append(image_path)
+
+    return valid_paths
